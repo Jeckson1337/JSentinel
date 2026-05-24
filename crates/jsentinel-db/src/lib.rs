@@ -11,7 +11,6 @@ use serde_json::Value;
 use std::fmt;
 use std::path::Path;
 use std::str::FromStr;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StorageMode {
@@ -412,6 +411,7 @@ fn now_timestamp() -> EventTimestamp {
 mod tests {
     use super::*;
     use jsentinel_events::{mock_network_event, mock_process_event};
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     fn temp_db_path(test_name: &str) -> std::path::PathBuf {
         let nanos = SystemTime::now()
