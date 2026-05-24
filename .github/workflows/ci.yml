@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cargo check
+        run: cargo check --workspace
+
+      - name: Cargo test
+        run: cargo test --workspace
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install frontend dependencies with lockfile
+        if: ${{ hashFiles('apps/desktop-ui/package-lock.json') != '' }}
+        working-directory: apps/desktop-ui
+        run: npm ci
+
+      - name: Install frontend dependencies without lockfile
+        if: ${{ hashFiles('apps/desktop-ui/package-lock.json') == '' }}
+        working-directory: apps/desktop-ui
+        run: npm install
+
+      - name: Build frontend
+        working-directory: apps/desktop-ui
+        run: npm run build

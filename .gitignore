@@ -1,0 +1,25 @@
+# Rust
+target/
+**/*.rs.bk
+
+# Node / Tauri
+node_modules/
+apps/desktop-ui/dist/
+apps/desktop-ui/.vite/
+apps/desktop-ui/src-tauri/target/
+
+# Local / dev
+.jsentinel-dev/
+*.sqlite
+*.sqlite3
+*.db
+*.log
+*.tmp
+.env
+.env.*
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

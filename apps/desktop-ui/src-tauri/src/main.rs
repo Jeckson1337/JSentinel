@@ -1,0 +1,81 @@
+#![forbid(unsafe_code)]
+
+use jsentinel_core::EventService;
+use jsentinel_db::{DashboardSummary, EventQuery};
+use jsentinel_events::{AccessEvent, EventId};
+use std::path::PathBuf;
+use std::sync::Mutex;
+
+struct AppState {
+    event_service: Mutex<EventService>,
+}
+
+#[tauri::command]
+fn jsentinel_get_events(
+    state: tauri::State<'_, AppState>,
+    query: EventQuery,
+) -> Result<Vec<AccessEvent>, String> {
+    let service = state
+        .event_service
+        .lock()
+        .map_err(|_| "event service lock was poisoned".to_string())?;
+    service.list_events(query).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn jsentinel_get_event(
+    state: tauri::State<'_, AppState>,
+    id: String,
+) -> Result<Option<AccessEvent>, String> {
+    let service = state
+        .event_service
+        .lock()
+        .map_err(|_| "event service lock was poisoned".to_string())?;
+    service
+        .get_event(&EventId::new(id))
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn jsentinel_seed_mock_events(state: tauri::State<'_, AppState>) -> Result<usize, String> {
+    let service = state
+        .event_service
+        .lock()
+        .map_err(|_| "event service lock was poisoned".to_string())?;
+    service.seed_mock_events().map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn jsentinel_get_dashboard_summary(
+    state: tauri::State<'_, AppState>,
+) -> Result<DashboardSummary, String> {
+    let service = state
+        .event_service
+        .lock()
+        .map_err(|_| "event service lock was poisoned".to_string())?;
+    service.dashboard_summary().map_err(|error| error.to_string())
+}
+
+fn main() {
+    let database_path = dev_database_path();
+    let event_service = EventService::initialize_storage(database_path)
+        .expect("failed to initialize local JSentinel SQLite storage");
+
+    tauri::Builder::default()
+        .manage(AppState {
+            event_service: Mutex::new(event_service),
+        })
+        .invoke_handler(tauri::generate_handler![
+            jsentinel_get_events,
+            jsentinel_get_event,
+            jsentinel_seed_mock_events,
+            jsentinel_get_dashboard_summary
+        ])
+        .run(tauri::generate_context!())
+        .expect("failed to run JSentinel desktop UI");
+}
+
+fn dev_database_path() -> PathBuf {
+    let root = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    root.join(".jsentinel-dev").join("jsentinel.sqlite3")
+}

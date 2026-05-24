@@ -1,0 +1,132 @@
+{
+  "nav": {
+    "dashboard": "Панель",
+    "timeline": "События",
+    "processes": "Процессы",
+    "network": "Сеть",
+    "files": "Файлы",
+    "startup": "Автозагрузка",
+    "settings": "Настройки",
+    "about": "О проекте"
+  },
+  "common": {
+    "planned": "Запланировано",
+    "loading": "Загрузка",
+    "noTelemetry": "Без телеметрии",
+    "notAntivirus": "Не антивирус",
+    "githubReleases": "GitHub Releases"
+  },
+  "sponsor": {
+    "placeholder": "Тут могла быть ваша реклама",
+    "note": "Локальный статичный placeholder. Без SDK, cookies, user-id, fingerprinting, аналитики и сетевых запросов."
+  },
+  "dashboard": {
+    "eyebrow": "Локальная видимость",
+    "title": "Центр контроля того, что происходит на этом ПК",
+    "subtitle": "JSentinel — local-first desktop-утилита для видимости и аккуратного контроля. Это не антивирус, и ограничения ОС применимы.",
+    "principles": [
+      {
+        "state": "Local-only",
+        "title": "Данные остаются на этой машине",
+        "description": "Без аккаунтов, принудительного облака и телеметрии на уровне базовых принципов."
+      },
+      {
+        "state": "Граница продукта",
+        "title": "Это не антивирус",
+        "description": "Продукт показывает процессы, события, автозагрузку, файлы и сетевую активность как best-effort локальную видимость."
+      },
+      {
+        "state": "Windows-first",
+        "title": "Windows 10/11 сначала",
+        "description": "Windows — главная v1-платформа. Linux заложен архитектурно и может выйти позже в beta-режиме."
+      },
+      {
+        "state": "Безопасные действия",
+        "title": "Опасные действия требуют подтверждения",
+        "description": "UI не должен выполнять privileged operations напрямую. Обратимые сценарии предпочтительнее."
+      }
+    ]
+  },
+  "dashboardSummary": {
+    "totalEvents": "Всего событий",
+    "warnings": "Предупреждения",
+    "critical": "Критические",
+    "processActivity": "Активность процессов",
+    "networkActivity": "Сетевая активность",
+    "fileActivity": "Файловая активность",
+    "startupEvents": "Автозагрузка",
+    "deviceAccessEvents": "Доступ к устройствам",
+    "storage": "Локальное хранилище",
+    "localSQLite": "Локальное SQLite-хранилище событий",
+    "sqliteActive": "События загружаются из локального SQLite через Tauri commands.",
+    "frontendFallback": "Tauri недоступен, поэтому UI показывает только локальные frontend mock events.",
+    "latestEvent": "Последнее событие",
+    "latestEventDescription": "Timestamp хранится локально вместе с записью события.",
+    "mockNoticeTitle": "Demo/mock data",
+    "mockNoticeBody": "Пока реальные OS backends не реализованы, счётчики Dashboard основаны на локальных mock/demo событиях."
+  },
+  "timeline": {
+    "title": "Локальная лента событий",
+    "subtitle": "События хранятся локально и показываются как audit-style timeline. Package 1 использует только mock/demo события.",
+    "mockData": "Mock data",
+    "sqliteSource": "Загружено из локального SQLite. События всё ещё demo/mock, пока OS backends не реализованы.",
+    "frontendFallback": "Tauri недоступен, поэтому экран использует встроенные frontend mock events.",
+    "kindFilter": "Тип",
+    "severityFilter": "Важность",
+    "search": "Поиск",
+    "searchPlaceholder": "Title, summary, process или target",
+    "allKinds": "Все типы",
+    "allSeverities": "Любая важность",
+    "noEventsYet": "Событий пока нет",
+    "noProcess": "Нет процесса",
+    "noTarget": "Нет target"
+  },
+  "eventKinds": {
+    "process": "Процесс",
+    "network": "Сеть",
+    "file": "Файл",
+    "startup": "Автозагрузка",
+    "device_access": "Доступ к устройству",
+    "locked_file": "Заблокированный файл",
+    "security": "Security",
+    "system": "Система"
+  },
+  "severity": {
+    "info": "Info",
+    "warning": "Warning",
+    "critical": "Critical"
+  },
+  "eventSources": {
+    "mock": "Mock",
+    "user": "User",
+    "core": "Core",
+    "windows_backend": "Windows backend",
+    "linux_backend": "Linux backend"
+  },
+  "placeholders": {
+    "timeline": "Будущая лента локальных privacy/security событий с понятной важностью и источником.",
+    "processes": "Будущий список процессов. Package 1 всё ещё не читает, не завершает, не приостанавливает и не изменяет реальные процессы.",
+    "network": "Будущая видимость сетевой активности. Package 1 всё ещё не блокирует соединения, не меняет firewall и не вызывает удалённые сервисы.",
+    "files": "Будущий экран файлов, требующих внимания. Package 1 всё ещё не сканирует диски, не удаляет файлы, не помещает их в quarantine и не планирует действия после перезагрузки.",
+    "startup": "Будущий экран автозагрузки. Package 1 всё ещё не читает и не пишет registry, systemd units, startup folders или desktop entries."
+  },
+  "settings": {
+    "title": "Каркас настроек",
+    "subtitle": "Пока это placeholders для будущих локальных controls и privacy-пояснений.",
+    "language": "Язык",
+    "privacy": "Privacy",
+    "privacyDescription": "JSentinel проектируется как local-first приложение без телеметрии, аккаунтов и tracking.",
+    "sponsor": "Sponsor placeholder",
+    "sponsorDescription": "Баннер статичный, поставляется локально, зависит только от языка и не использует рекламные SDK или сетевые запросы.",
+    "releaseChannel": "Канал релизов",
+    "releaseDescription": "Основной канал распространения — GitHub Releases с checksums, changelog, known limitations и privacy notes.",
+    "demoData": "Demo data",
+    "demoDataDescription": "Заполняет локальные mock events для проверки UI и SQLite. Это не читает реальное состояние ОС.",
+    "seedDemoEvents": "Добавить demo events",
+    "seedDemoEventsDone": "Добавлено локальных demo events: {count}.",
+    "seedDemoEventsFallback": "Tauri недоступен, поэтому UI использует встроенные frontend mock events."
+  },
+  "about": {
+    "description": "JSentinel — open-source local-first центр видимости и контроля для Windows 10/11 и Linux."
+  }
+}

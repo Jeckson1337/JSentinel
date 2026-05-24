@@ -1,0 +1,132 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "timeline": "Timeline",
+    "processes": "Processes",
+    "network": "Network",
+    "files": "Files",
+    "startup": "Startup",
+    "settings": "Settings",
+    "about": "About"
+  },
+  "common": {
+    "planned": "Planned",
+    "loading": "Loading",
+    "noTelemetry": "No telemetry",
+    "notAntivirus": "Not an antivirus",
+    "githubReleases": "GitHub Releases"
+  },
+  "sponsor": {
+    "placeholder": "Your ad could be here",
+    "note": "Local static placeholder. No SDK, cookies, user ID, fingerprinting, analytics, or network requests."
+  },
+  "dashboard": {
+    "eyebrow": "Local visibility",
+    "title": "Control center for what happens on this PC",
+    "subtitle": "JSentinel is a local-first desktop utility for visibility and careful control. It is not an antivirus, and OS limitations apply.",
+    "principles": [
+      {
+        "state": "Local-only",
+        "title": "Data stays on this machine",
+        "description": "No accounts, no forced cloud, and no telemetry are part of the foundation."
+      },
+      {
+        "state": "Clear boundary",
+        "title": "Not an antivirus",
+        "description": "The product shows processes, events, startup, files, and network activity as best-effort local visibility."
+      },
+      {
+        "state": "Windows-first",
+        "title": "Windows 10/11 first",
+        "description": "Windows is the primary v1 platform. Linux support is planned architecturally and may ship as beta later."
+      },
+      {
+        "state": "Safe actions",
+        "title": "Dangerous actions are gated",
+        "description": "The UI will not execute privileged operations directly. Reversible workflows are preferred."
+      }
+    ]
+  },
+  "dashboardSummary": {
+    "totalEvents": "Total events",
+    "warnings": "Warnings",
+    "critical": "Critical",
+    "processActivity": "Recent process activity",
+    "networkActivity": "Recent network activity",
+    "fileActivity": "Recent file activity",
+    "startupEvents": "Startup events",
+    "deviceAccessEvents": "Device access events",
+    "storage": "Local storage",
+    "localSQLite": "Local SQLite event store",
+    "sqliteActive": "Events are loaded from the local SQLite store through Tauri commands.",
+    "frontendFallback": "Tauri is unavailable, so the UI is showing local frontend mock data only.",
+    "latestEvent": "Latest event",
+    "latestEventDescription": "Timestamp is stored locally with the event record.",
+    "mockNoticeTitle": "Demo/mock data",
+    "mockNoticeBody": "Until real OS backends are implemented, dashboard counts are based on local mock/demo events."
+  },
+  "timeline": {
+    "title": "Local event timeline",
+    "subtitle": "Events are stored locally and shown as an audit-style timeline. Package 1 uses mock/demo events only.",
+    "mockData": "Mock data",
+    "sqliteSource": "Loaded from local SQLite. Events are still demo/mock until OS backends are implemented.",
+    "frontendFallback": "Tauri is unavailable, so this view uses bundled frontend mock events.",
+    "kindFilter": "Kind",
+    "severityFilter": "Severity",
+    "search": "Search",
+    "searchPlaceholder": "Title, summary, process, or target",
+    "allKinds": "All kinds",
+    "allSeverities": "All severities",
+    "noEventsYet": "No events yet",
+    "noProcess": "No process",
+    "noTarget": "No target"
+  },
+  "eventKinds": {
+    "process": "Process",
+    "network": "Network",
+    "file": "File",
+    "startup": "Startup",
+    "device_access": "Device access",
+    "locked_file": "Locked file",
+    "security": "Security",
+    "system": "System"
+  },
+  "severity": {
+    "info": "Info",
+    "warning": "Warning",
+    "critical": "Critical"
+  },
+  "eventSources": {
+    "mock": "Mock",
+    "user": "User",
+    "core": "Core",
+    "windows_backend": "Windows backend",
+    "linux_backend": "Linux backend"
+  },
+  "placeholders": {
+    "timeline": "Future timeline for local security and privacy events, with clear severity and source context.",
+    "processes": "Future process inventory view. Package 1 still does not inspect, kill, suspend, or modify running processes.",
+    "network": "Future network visibility view. Package 1 still does not block connections, modify firewall rules, or call remote services.",
+    "files": "Future file attention view. Package 1 still does not scan disks, delete files, quarantine items, or schedule reboot actions.",
+    "startup": "Future startup visibility view. Package 1 still does not read or write registry keys, systemd units, or startup folders."
+  },
+  "settings": {
+    "title": "Settings foundation",
+    "subtitle": "These settings are placeholders for future local controls and privacy explanations.",
+    "language": "Language",
+    "privacy": "Privacy",
+    "privacyDescription": "JSentinel is designed around local-first behavior, no telemetry, no accounts, and no tracking.",
+    "sponsor": "Sponsor placeholder",
+    "sponsorDescription": "The banner is static, bundled locally, language-only, and does not use ad SDKs or network requests.",
+    "releaseChannel": "Release channel",
+    "releaseDescription": "Primary distribution is planned through GitHub Releases with checksums, changelog, limitations, and privacy notes.",
+    "demoData": "Demo data",
+    "demoDataDescription": "Seed local mock events for UI and SQLite validation. This does not read real OS state.",
+    "seedDemoEvents": "Seed demo events",
+    "seedDemoEventsDone": "Seeded {count} local demo events.",
+    "seedDemoEventsFallback": "Tauri is unavailable, so the UI is using bundled frontend mock events."
+  },
+  "about": {
+    "description": "JSentinel is an open-source local-first visibility and control center for Windows 10/11 and Linux."
+  }
+}
