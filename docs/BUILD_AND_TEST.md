@@ -35,6 +35,12 @@ npm run build
 
 The root Rust workspace includes the Tauri Rust package under `apps/desktop-ui/src-tauri`, so `cargo check --workspace` validates both the shared crates and the Tauri command layer.
 
+Tauri icon assets can be checked locally with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\dev\check-tauri-icons.ps1
+```
+
 ## Linux/macOS Shell Scripts
 
 ```sh

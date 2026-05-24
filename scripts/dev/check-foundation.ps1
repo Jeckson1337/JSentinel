@@ -93,6 +93,15 @@ foreach ($crate in $crateNames) {
     }
 }
 
+$iconCheckScript = Join-Path $repoRoot "scripts\dev\check-tauri-icons.ps1"
+if (Test-Path $iconCheckScript) {
+    Write-Host "Running Tauri icon validation"
+    powershell -ExecutionPolicy Bypass -File $iconCheckScript
+    if ($LASTEXITCODE -ne 0) {
+        Report-Error "Tauri icon validation failed"
+    }
+}
+
 if (Get-Command cargo -ErrorAction SilentlyContinue) {
     Write-Host "Running cargo check --workspace"
     cargo check --workspace
