@@ -29,6 +29,8 @@ Dangerous actions return a disabled reason: the framework is prepared, but imple
 
 The UI asks the backend for an `ActionPlan` before showing confirmation. Confirmation copy comes from policy output, not from ad-hoc screen logic. Confirmed Package 4B safe actions may open Explorer or an allowlisted Windows Settings page. No file, registry, firewall, process, startup, or permission mutation happens.
 
+Package 4B.5 hardens this path by rejecting URL-like path targets, shell-like schemes, embedded null characters, UNC paths, malformed settings URIs, and non-allowlisted settings pages before OS launch.
+
 ## Audit Log
 
 Action results are stored locally in SQLite `action_history`. The log supports filtering by action kind, status, text search, limit, and newest-first ordering.

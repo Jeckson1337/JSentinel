@@ -30,6 +30,10 @@ Run-Step "Frontend checks" {
     powershell -ExecutionPolicy Bypass -File scripts\dev\check-frontend.ps1
 }
 
+Run-Step "Safe action checks" {
+    powershell -ExecutionPolicy Bypass -File scripts\dev\check-safe-actions.ps1
+}
+
 if ($failures -gt 0) {
     Write-Host "check-all failed with $failures step error(s)." -ForegroundColor Red
     exit 1

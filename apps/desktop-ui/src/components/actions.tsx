@@ -38,7 +38,14 @@ export function ConfirmationDialog({
         <div className="badge-list">
           <ActionRiskBadge risk={plan.request.risk_level} t={t} />
           <StatusBadge label={t.actionAvailability[plan.availability]} />
+          <StatusBadge label={t.actionKinds[plan.request.kind]} tone="info" />
         </div>
+        <dl className="details-list">
+          <div>
+            <dt>{t.actions.target}</dt>
+            <dd>{plan.request.target || t.actions.noTarget}</dd>
+          </div>
+        </dl>
         <ul className="plain-list">
           {plan.expected_effects.map((effect) => (
             <li key={effect}>{effect}</li>

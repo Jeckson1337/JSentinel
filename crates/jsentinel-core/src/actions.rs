@@ -147,11 +147,42 @@ pub fn validate_reveal_path(target: &str) -> Result<ValidatedRevealPath, SafeAct
         ));
     }
 
+    if trimmed.contains('\0') {
+        return Err(SafeActionError::InvalidTarget(
+            "Path target contains an embedded null character.".to_string(),
+        ));
+    }
+
+    if trimmed != target {
+        return Err(SafeActionError::InvalidTarget(
+            "Path target must not contain leading or trailing whitespace.".to_string(),
+        ));
+    }
+
+    if trimmed.starts_with("\\\\") || trimmed.starts_with("//") {
+        return Err(SafeActionError::InvalidTarget(
+            "UNC/network paths are not supported by safe actions yet.".to_string(),
+        ));
+    }
+
     let lowered = trimmed.to_ascii_lowercase();
+    if matches!(
+        lowered.as_str(),
+        "cmd" | "cmd.exe" | "powershell" | "powershell.exe" | "pwsh" | "pwsh.exe"
+    ) {
+        return Err(SafeActionError::InvalidTarget(
+            "Raw command names are not valid local path targets.".to_string(),
+        ));
+    }
+
     if lowered.starts_with("http://")
         || lowered.starts_with("https://")
         || lowered.starts_with("file://")
         || lowered.starts_with("ms-settings:")
+        || lowered.starts_with("shell:")
+        || lowered.starts_with("cmd:")
+        || lowered.starts_with("powershell:")
+        || lowered.starts_with("javascript:")
     {
         return Err(SafeActionError::InvalidTarget(
             "Only local filesystem paths are allowed.".to_string(),
@@ -184,7 +215,7 @@ pub fn settings_uri_from_request(request: &ActionRequest) -> Option<String> {
         .as_ref()
         .and_then(settings_page_from_metadata)
         .or_else(|| {
-            let target = request.target.trim();
+            let target = request.target.as_str();
             (!target.is_empty()).then(|| target.to_string())
         })
 }
@@ -197,6 +228,10 @@ fn settings_page_from_metadata(metadata: &Value) -> Option<String> {
 }
 
 pub fn is_allowed_windows_settings_uri(uri: &str) -> bool {
+    if uri.is_empty() || uri.contains('\0') || uri.trim() != uri {
+        return false;
+    }
+
     ALLOWED_WINDOWS_SETTINGS_URIS
         .iter()
         .any(|allowed| uri.eq_ignore_ascii_case(allowed))
@@ -370,11 +405,19 @@ mod tests {
     #[test]
     fn settings_allowlist_rejects_arbitrary_urls_and_commands() {
         for value in [
+            "http://example.com",
             "https://example.com",
-            "file://C:/Windows/System32/cmd.exe",
+            "file:///C:/Windows/System32/cmd.exe",
             "cmd.exe",
+            "powershell.exe",
             "powershell",
             "ms-settings:../../cmd",
+            "ms-settings:privacy;cmd",
+            "shell:AppsFolder",
+            "javascript:alert(1)",
+            " ms-settings:privacy",
+            "ms-settings:privacy ",
+            "ms-settings:privacy\0",
         ] {
             assert!(!is_allowed_windows_settings_uri(value));
         }
@@ -389,8 +432,38 @@ mod tests {
 
     #[test]
     fn reveal_path_validation_rejects_url_targets() {
-        let error =
-            validate_reveal_path("https://example.com").expect_err("URL target must be rejected");
+        for target in [
+            "http://example.com",
+            "https://example.com",
+            "file:///C:/Windows/System32/cmd.exe",
+            "ms-settings:privacy",
+            "shell:AppsFolder",
+            "cmd.exe",
+            "powershell.exe",
+            "cmd:dir",
+            "powershell:Start-Process",
+            "javascript:alert(1)",
+        ] {
+            let error = validate_reveal_path(target).expect_err("URL target must be rejected");
+
+            assert!(matches!(error, SafeActionError::InvalidTarget(_)));
+        }
+    }
+
+    #[test]
+    fn reveal_path_validation_rejects_unc_and_null_targets() {
+        for target in ["\\\\server\\share", "//server/share", "C:\\Temp\0file.txt"] {
+            let error = validate_reveal_path(target).expect_err("target must be rejected");
+
+            assert!(matches!(error, SafeActionError::InvalidTarget(_)));
+        }
+    }
+
+    #[test]
+    fn reveal_path_validation_rejects_nonexistent_path() {
+        let missing = std::env::temp_dir().join("jsentinel-definitely-missing-path-for-test");
+        let error = validate_reveal_path(missing.to_string_lossy().as_ref())
+            .expect_err("missing path must be rejected");
 
         assert!(matches!(error, SafeActionError::InvalidTarget(_)));
     }
@@ -422,6 +495,36 @@ mod tests {
         ));
 
         assert_eq!(result.status, ActionStatus::Denied);
+    }
+
+    #[test]
+    fn executor_denies_whitespace_padded_settings_metadata() {
+        let executor = SafeActionExecutor::new(MockAdapter::default());
+        let mut request = ActionRequest::new(
+            ActionKind::OpenWindowsSettings,
+            "",
+            "Privacy settings",
+            "settings",
+        );
+        request.metadata_json = Some(json!({ "settings_page": " ms-settings:privacy " }));
+
+        let result = executor.execute(request);
+
+        assert_eq!(result.status, ActionStatus::Denied);
+    }
+
+    #[test]
+    fn executor_returns_unsupported_for_unsupported_action() {
+        let executor = SafeActionExecutor::new(MockAdapter::default());
+        let result = executor.execute(ActionRequest::new(
+            ActionKind::DetectFileLockers,
+            "C:\\Demo\\locked.txt",
+            "Locked file",
+            "files",
+        ));
+
+        assert_eq!(result.status, ActionStatus::Unsupported);
+        assert!(result.error.is_some());
     }
 
     #[test]

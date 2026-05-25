@@ -10,6 +10,7 @@ JSentinel should be designed around conservative local control.
 - Action attempts that reach the backend execution path should be audited locally.
 - Package 4B safe actions are limited to opening local Explorer paths and allowlisted Windows Settings pages.
 - JSentinel must not execute arbitrary commands or open arbitrary external URLs from action input.
+- Safe action targets must be validated again in the backend before execution, even after UI planning.
 - Reversible actions are preferred.
 - No force-delete in v1.
 - No kernel driver in v1.

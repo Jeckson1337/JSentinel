@@ -11,7 +11,10 @@ Opens a local filesystem path in Windows Explorer.
 Safety rules:
 
 - target must be a non-empty local filesystem path;
-- `http://`, `https://`, `file://`, and `ms-settings:` targets are rejected;
+- `http://`, `https://`, `file://`, `ms-settings:`, `shell:`, `cmd:`, `powershell:`, and `javascript:` targets are rejected;
+- raw command names such as `cmd.exe`, `powershell.exe`, and `pwsh.exe` are rejected;
+- embedded null characters and leading/trailing whitespace are rejected;
+- UNC/network paths are rejected until explicitly designed later;
 - target must already exist;
 - JSentinel does not create, delete, move, rename, execute, or change permissions on the target;
 - files may be shown in their containing folder, folders may be opened directly;
@@ -36,6 +39,7 @@ Safety rules:
 - arbitrary URLs are rejected;
 - external browser links are not opened;
 - raw user-provided URLs are not trusted;
+- malformed or whitespace-padded settings values are rejected;
 - command execution is not built from concatenated shell strings;
 - non-Windows platforms return unsupported.
 
