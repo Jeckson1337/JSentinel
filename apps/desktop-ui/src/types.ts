@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import type { LucideIcon } from "lucide-react";
 
 export type ScreenId =
   | "dashboard"
@@ -13,5 +13,5 @@ export type ScreenId =
 export type NavigationItem = {
   id: ScreenId;
   label: string;
-  icon: ComponentType<{ size?: number; strokeWidth?: number }>;
+  icon: LucideIcon;
 };
