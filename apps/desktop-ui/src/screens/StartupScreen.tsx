@@ -3,9 +3,18 @@ import { loadEvents, type AccessEvent } from "../events";
 import type { Dictionary } from "../i18n";
 import { buildStartupRows } from "../viewModels";
 import { DisabledActionButton, EmptyState, SectionCard, SeverityBadge, StatusBadge } from "../components/ui";
+import {
+  loadStartupEntries,
+  modeLabel,
+  type ReadOnlyQueryResult,
+  type StartupEntryInfo,
+  type SystemDataMode,
+} from "../system";
 
 export function StartupScreen({ t, refreshToken }: { t: Dictionary; refreshToken: number }) {
   const [events, setEvents] = useState<AccessEvent[]>([]);
+  const [entries, setEntries] = useState<ReadOnlyQueryResult<StartupEntryInfo> | null>(null);
+  const [mode, setMode] = useState<SystemDataMode>("mock_fallback");
 
   useEffect(() => {
     let cancelled = false;
@@ -14,12 +23,19 @@ export function StartupScreen({ t, refreshToken }: { t: Dictionary; refreshToken
         setEvents(result.data);
       }
     });
+    loadStartupEntries().then((result) => {
+      if (!cancelled) {
+        setEntries(result.data);
+        setMode(result.mode);
+      }
+    });
     return () => {
       cancelled = true;
     };
   }, [refreshToken]);
 
   const rows = buildStartupRows(events);
+  const useLive = mode === "live_windows" && Boolean(entries?.items.length);
 
   return (
     <section className="screen">
@@ -28,17 +44,34 @@ export function StartupScreen({ t, refreshToken }: { t: Dictionary; refreshToken
         <h1>{t.startup.title}</h1>
         <p>{t.startup.subtitle}</p>
       </div>
+      <div className="notice-strip">
+        <strong>{modeLabel(mode, t.systemDataModes)}</strong>
+        <span>{entries?.capability.limitation ?? t.startup.liveDescription}</span>
+      </div>
       <SectionCard title={t.startup.entriesTitle} description={t.startup.limitations}>
         <div className="data-table">
           <div className="data-row data-row-head">
             <span>{t.startup.name}</span>
             <span>{t.startup.source}</span>
             <span>{t.startup.state}</span>
-            <span>{t.startup.timestamp}</span>
-            <span>{t.startup.severity}</span>
+            <span>{useLive ? t.startup.scope : t.startup.timestamp}</span>
+            <span>{useLive ? t.startup.risk : t.startup.severity}</span>
           </div>
-          {rows.length === 0 && <EmptyState title={t.startup.noStartupEvents} />}
-          {rows.map((row) => (
+          {useLive &&
+            entries?.items.map((entry) => (
+              <div className="data-row" key={entry.id}>
+                <span>{entry.name}</span>
+                <span>{entry.source}</span>
+                <StatusBadge
+                  label={entry.enabled === false ? t.startup.disabled : t.startup.enabled}
+                  tone={entry.enabled === false ? "neutral" : "success"}
+                />
+                <span>{entry.scope}</span>
+                <StatusBadge label={entry.risk ?? t.startup.unknownRisk} />
+              </div>
+            ))}
+          {!useLive && rows.length === 0 && <EmptyState title={t.startup.noStartupEvents} />}
+          {!useLive && rows.map((row) => (
             <div className="data-row" key={`${row.name}-${row.timestamp}`}>
               <span>{row.name}</span>
               <span>{row.source}</span>

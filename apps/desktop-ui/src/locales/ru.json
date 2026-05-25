@@ -27,9 +27,9 @@
   "dashboard": {
     "eyebrow": "Локальная видимость",
     "title": "Что происходит на этом ПК",
-    "subtitle": "Local-first центр контроля поверх локальных событий и demo data, пока read-only OS backends не реализованы.",
+    "subtitle": "Local-first центр контроля поверх локальных событий и demo data, пока read-only OS backends развиваются.",
     "recentEvents": "Последние события",
-    "recentEventsDescription": "Новые записи локальной ленты, сейчас только mock/demo.",
+    "recentEventsDescription": "Новые записи локальной ленты.",
     "localPromise": "Границы продукта",
     "localPromiseDescription": "JSentinel local-first, приватный по умолчанию и честно показывает ограничения.",
     "localOnly": "Local-only",
@@ -39,6 +39,8 @@
     "inspectProcesses": "Процессы",
     "reviewStartup": "Автозагрузка",
     "networkActivity": "Сетевая активность",
+    "windowsBackend": "Windows read-only backend",
+    "windowsBackendDescription": "Live-статус возможностей процессов, сети, автозагрузки и locker detection. Privileged actions не exposed.",
     "principles": [
       {
         "state": "Local-only",
@@ -48,12 +50,12 @@
       {
         "state": "Граница продукта",
         "title": "Это не антивирус",
-        "description": "Продукт показывает процессы, события, автозагрузку, файлы и сетевую активность как best-effort локальную видимость."
+        "description": "Продукт показывает процессы, события, автозагрузку, файлы и сеть как best-effort локальную видимость."
       },
       {
         "state": "Windows-first",
         "title": "Windows 10/11 сначала",
-        "description": "Windows — главная v1-платформа. Linux заложен архитектурно и может выйти позже в beta-режиме."
+        "description": "Windows - главная v1-платформа. Linux заложен архитектурно и может выйти позже в beta-режиме."
       },
       {
         "state": "Безопасные действия",
@@ -78,13 +80,13 @@
     "latestEvent": "Последнее событие",
     "latestEventDescription": "Timestamp хранится локально вместе с записью события.",
     "mockNoticeTitle": "Demo/mock data",
-    "mockNoticeBody": "Пока реальные OS backends не реализованы, счётчики Dashboard основаны на локальных mock/demo событиях."
+    "mockNoticeBody": "Timeline остаётся audit-style лентой. Live Windows data показывается отдельно и не превращается в fake threat detection."
   },
   "timeline": {
     "title": "Локальная лента событий",
-    "subtitle": "Поиск, фильтры и просмотр локальных audit-style событий. Package 2 всё ещё использует только mock/demo data.",
+    "subtitle": "Поиск, фильтры и просмотр локальных audit-style событий.",
     "mockData": "Mock data",
-    "sqliteSource": "Загружено из локального SQLite. События всё ещё demo/mock, пока OS backends не реализованы.",
+    "sqliteSource": "Загружено из локального SQLite. События могут быть demo/mock или read-only snapshots.",
     "frontendFallback": "Tauri недоступен, поэтому экран использует встроенные frontend mock events.",
     "invokeFallback": "Runtime fallback показан явно.",
     "kindFilter": "Тип",
@@ -135,40 +137,64 @@
     "windows_backend": "Windows backend",
     "linux_backend": "Linux backend"
   },
+  "systemDataModes": {
+    "live_windows": "Live Windows data",
+    "mock_fallback": "Demo/mock fallback",
+    "unsupported_platform": "Платформа не поддерживается"
+  },
+  "system": {
+    "supported": "Поддерживается",
+    "unsupported": "Не поддерживается",
+    "liveWindowsData": "Live Windows data",
+    "readOnly": "Read-only"
+  },
   "processes": {
     "title": "Видимость процессов",
-    "subtitle": "Mock-backed summaries, собранные из локальных событий. Реальная инспекция процессов не запущена.",
+    "subtitle": "Read-only Windows inventory, если доступен; иначе fallback на mock/events.",
     "tableTitle": "Сводка процессов",
-    "limitations": "Real process inspection будет добавлен в пакете Windows read-only backend.",
+    "limitations": "Данные процессов read-only и best-effort. Поля защищённых процессов могут быть недоступны.",
     "processName": "Процесс",
     "pid": "PID",
+    "parentPid": "Parent PID",
+    "path": "Path",
     "lastActivity": "Последняя активность",
     "eventCount": "События",
     "severity": "Важность",
+    "unknown": "Неизвестно",
     "noProcesses": "Событий процессов пока нет",
     "detailsTitle": "Детали процесса",
-    "detailsDescription": "Детали собраны только из mock/local events.",
+    "detailsDescription": "Детали берутся из read-only Windows backend, если он доступен, иначе из local mock/events.",
     "unknownPath": "Path недоступен",
-    "backendNotice": "Real process inspection будет добавлен в пакете Windows read-only backend.",
+    "commandLine": "Command line",
+    "startedAt": "Запущен",
+    "limitationsLabel": "Ограничения",
+    "liveDescription": "Backend пытается читать inventory процессов без изменения их состояния.",
+    "backendNotice": "Fallback details собраны только из mock/local events.",
+    "backendReadOnlyNotice": "Этот экран read-only. Kill, quarantine и location actions намеренно отключены.",
     "selectProcess": "Выберите процесс"
   },
   "network": {
     "title": "Сетевая активность",
-    "subtitle": "Недавние сетевые события из local demo/mock data. Firewall changes и network scan не реализованы.",
-    "recentConnections": "Недавние сетевые события",
-    "limitations": "Network control запланирован; firewall changes пока не реализованы.",
+    "subtitle": "Read-only Windows TCP/UDP snapshot, если доступен; иначе fallback на mock/events.",
+    "recentConnections": "Недавние сетевые соединения",
+    "limitations": "Network control запланирован; firewall changes не реализованы.",
     "process": "Процесс",
+    "pid": "PID",
+    "local": "Local",
     "remote": "Remote target",
     "protocol": "Protocol",
+    "state": "State",
     "timestamp": "Время",
     "severity": "Важность",
+    "unknown": "Неизвестно",
+    "liveDescription": "Backend читает point-in-time TCP/UDP snapshot и best-effort сопоставляет owning PID.",
     "noNetworkEvents": "Сетевых событий пока нет",
     "rulesTitle": "Managed rules placeholder",
     "rulesDescription": "Rules потребуют policy и подтверждения в будущем пакете."
   },
   "files": {
     "title": "Файловая активность",
-    "subtitle": "Audit-mode file и locked-file events только из mock/local data.",
+    "subtitle": "Audit-mode file и locked-file events из mock/local data; locker detection пока честно unsupported.",
     "activityTitle": "File и locked-file events",
     "limitations": "File monitoring запланирован в audit-mode; real file watcher в этом пакете нет.",
     "path": "Path",
@@ -178,18 +204,27 @@
     "severity": "Важность",
     "noFileEvents": "Файловых событий пока нет",
     "actionsTitle": "File actions placeholder",
-    "actionsDescription": "Эти действия disabled, пока нет безопасного backend design."
+    "actionsDescription": "Опасные действия disabled, пока нет безопасного backend design.",
+    "lockedFilePath": "Path для будущей locker detection",
+    "lockedFilePlaceholder": "C:\\Users\\Example\\Documents\\locked.txt",
+    "checkLockersReadOnly": "Проверить поддержку locker detection"
   },
   "startup": {
     "title": "Startup Guard",
-    "subtitle": "Видимость startup events поверх mock/local events. Registry и системные startup sources не читаются.",
+    "subtitle": "Read-only Windows startup inventory, если доступен; иначе fallback на mock/events.",
     "entriesTitle": "Startup entries",
-    "limitations": "Startup Guard backend пока не реализован.",
+    "limitations": "Startup entries только read-only. Scheduled task parsing пока не реализован.",
     "name": "Name",
     "source": "Source",
     "state": "State",
+    "scope": "Scope",
+    "risk": "Risk",
     "timestamp": "Время",
     "severity": "Важность",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "unknownRisk": "Unknown",
+    "liveDescription": "Backend читает Registry Run keys и Startup folders без изменения данных.",
     "noStartupEvents": "Startup events пока нет",
     "actionsTitle": "Startup actions placeholder",
     "actionsDescription": "Disable/restore startup entries намеренно недоступны в этом пакете."
@@ -221,9 +256,9 @@
     "sponsorDescription": "Баннер статичный, поставляется локально, зависит только от языка и не использует рекламные SDK или сетевые запросы.",
     "sponsorDetails": "Без cookies, user-id, fingerprinting, аналитики и remote ad loading.",
     "storage": "Storage",
-    "storageDescription": "Package 2 использует локальный SQLite development path.",
+    "storageDescription": "Package 3 использует локальный SQLite development path и read-only Windows snapshots.",
     "releaseChannel": "Канал релизов",
-    "releaseDescription": "Основной канал распространения — GitHub Releases с checksums, changelog, known limitations и privacy notes.",
+    "releaseDescription": "Основной канал распространения - GitHub Releases с checksums, changelog, known limitations и privacy notes.",
     "releaseDetails": "Auto-updater не включается в v1, если он требует неясной серверной или telemetry-логики.",
     "demoData": "Demo data",
     "demoDataDescription": "Заполняет локальные mock events для проверки UI и SQLite. Это не читает реальное состояние ОС.",
@@ -232,15 +267,15 @@
     "seedDemoEventsFallback": "Tauri недоступен, поэтому UI использует встроенные frontend mock events."
   },
   "about": {
-    "description": "JSentinel — open-source local-first центр видимости и контроля для Windows 10/11 и Linux.",
+    "description": "JSentinel - open-source local-first центр видимости и контроля для Windows 10/11 и Linux.",
     "whatItIsTitle": "Что это",
     "whatItIs": "Локальная desktop-утилита для видимости событий, процессов, файлов, автозагрузки и сети по мере развития backend.",
     "statusTitle": "Статус текущей сборки",
-    "statusDescription": "Эта сборка — product UI layer поверх local mock events.",
+    "statusDescription": "Эта сборка добавляет Windows read-only backend поверх product UI layer.",
     "foundation": "Foundation и monorepo готовы.",
     "eventModel": "Local event model и SQLite repository существуют.",
-    "mockData": "Timeline и экраны используют mock/demo data.",
-    "noBackend": "Реальный OS backend пока не реализован.",
+    "mockData": "Timeline и экраны умеют fallback на mock/demo data.",
+    "noBackend": "Опасные OS actions не реализованы; backend read-only.",
     "platformsTitle": "Платформы",
     "platformsDescription": "Windows 10/11 сначала. Linux planned/beta.",
     "linksTitle": "Project links",

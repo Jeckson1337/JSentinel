@@ -2,10 +2,27 @@ import { useEffect, useState } from "react";
 import { loadEvents, type AccessEvent } from "../events";
 import type { Dictionary } from "../i18n";
 import { buildFileRows } from "../viewModels";
-import { DisabledActionButton, EmptyState, EventKindBadge, SectionCard, SeverityBadge } from "../components/ui";
+import {
+  DisabledActionButton,
+  EmptyState,
+  EventKindBadge,
+  SectionCard,
+  SeverityBadge,
+  StatusBadge,
+} from "../components/ui";
+import {
+  detectFileLockers,
+  modeLabel,
+  type FileLockerInfo,
+  type ReadOnlyQueryResult,
+  type SystemDataMode,
+} from "../system";
 
 export function FilesScreen({ t, refreshToken }: { t: Dictionary; refreshToken: number }) {
   const [events, setEvents] = useState<AccessEvent[]>([]);
+  const [path, setPath] = useState("");
+  const [lockerResult, setLockerResult] = useState<ReadOnlyQueryResult<FileLockerInfo> | null>(null);
+  const [lockerMode, setLockerMode] = useState<SystemDataMode>("unsupported_platform");
 
   useEffect(() => {
     let cancelled = false;
@@ -20,6 +37,12 @@ export function FilesScreen({ t, refreshToken }: { t: Dictionary; refreshToken: 
   }, [refreshToken]);
 
   const rows = buildFileRows(events);
+
+  async function handleDetectLockers() {
+    const result = await detectFileLockers(path.trim());
+    setLockerResult(result.data);
+    setLockerMode(result.mode);
+  }
 
   return (
     <section className="screen">
@@ -50,12 +73,44 @@ export function FilesScreen({ t, refreshToken }: { t: Dictionary; refreshToken: 
         </div>
       </SectionCard>
       <SectionCard title={t.files.actionsTitle} description={t.files.actionsDescription}>
+        <label className="field-label">
+          {t.files.lockedFilePath}
+          <input
+            className="text-input"
+            value={path}
+            onChange={(event) => setPath(event.target.value)}
+            placeholder={t.files.lockedFilePlaceholder}
+          />
+        </label>
         <div className="action-grid">
           <DisabledActionButton>{t.disabledActions.revealFile}</DisabledActionButton>
-          <DisabledActionButton>{t.disabledActions.detectLockers}</DisabledActionButton>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={handleDetectLockers}
+            disabled={!path.trim()}
+          >
+            {t.files.checkLockersReadOnly}
+          </button>
           <DisabledActionButton>{t.disabledActions.quarantine}</DisabledActionButton>
           <DisabledActionButton>{t.disabledActions.deleteOnReboot}</DisabledActionButton>
         </div>
+        {lockerResult && (
+          <div className="detail-panel">
+            <div className="badge-list">
+              <StatusBadge label={modeLabel(lockerMode, t.systemDataModes)} tone="warning" />
+              <StatusBadge
+                label={lockerResult.capability.supported ? t.system.supported : t.system.unsupported}
+              />
+            </div>
+            <p>{lockerResult.capability.limitation}</p>
+            {lockerResult.items.map((item) => (
+              <p className="muted-line" key={`${item.path}-${item.confidence}`}>
+                {item.path} - {item.limitation ?? item.confidence}
+              </p>
+            ))}
+          </div>
+        )}
       </SectionCard>
     </section>
   );

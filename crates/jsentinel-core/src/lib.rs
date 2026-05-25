@@ -2,6 +2,7 @@
 
 use jsentinel_db::{init_db, DashboardSummary, Database, DbResult, EventQuery};
 use jsentinel_events::{mock_demo_events, AccessEvent, EventId};
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -77,15 +78,139 @@ impl EventService {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProviderCapability {
     pub key: String,
     pub description: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SystemPlatform {
+    Windows,
+    Linux,
+    Unsupported,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CapabilityStatus {
+    pub id: String,
+    pub label: String,
+    pub supported: bool,
+    pub requires_admin: bool,
+    pub limitation: Option<String>,
+}
+
+impl CapabilityStatus {
+    pub fn supported(id: impl Into<String>, label: impl Into<String>) -> Self {
+        Self {
+            id: id.into(),
+            label: label.into(),
+            supported: true,
+            requires_admin: false,
+            limitation: None,
+        }
+    }
+
+    pub fn unsupported(
+        id: impl Into<String>,
+        label: impl Into<String>,
+        limitation: impl Into<String>,
+    ) -> Self {
+        Self {
+            id: id.into(),
+            label: label.into(),
+            supported: false,
+            requires_admin: false,
+            limitation: Some(limitation.into()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReadOnlyQueryResult<T> {
+    pub platform: SystemPlatform,
+    pub provider: String,
+    pub capability: CapabilityStatus,
+    pub items: Vec<T>,
+}
+
+impl<T> ReadOnlyQueryResult<T> {
+    pub fn unsupported(
+        provider: impl Into<String>,
+        capability_id: impl Into<String>,
+        capability_label: impl Into<String>,
+        limitation: impl Into<String>,
+    ) -> Self {
+        Self {
+            platform: SystemPlatform::Unsupported,
+            provider: provider.into(),
+            capability: CapabilityStatus::unsupported(capability_id, capability_label, limitation),
+            items: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ProcessInfo {
+    pub pid: u32,
+    pub name: String,
+    pub path: Option<String>,
+    pub parent_pid: Option<u32>,
+    pub command_line: Option<String>,
+    pub started_at: Option<String>,
+    pub owner: Option<String>,
+    pub source: String,
+    pub confidence: String,
+    pub limitations: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NetworkConnectionInfo {
+    pub protocol: String,
+    pub local_addr: String,
+    pub local_port: Option<u16>,
+    pub remote_addr: Option<String>,
+    pub remote_port: Option<u16>,
+    pub state: Option<String>,
+    pub pid: Option<u32>,
+    pub process_name: Option<String>,
+    pub process_path: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StartupEntryInfo {
+    pub id: String,
+    pub name: String,
+    pub source: String,
+    pub command: Option<String>,
+    pub path: Option<String>,
+    pub enabled: Option<bool>,
+    pub scope: String,
+    pub publisher: Option<String>,
+    pub risk: Option<String>,
+    pub limitation: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FileLockerInfo {
+    pub pid: Option<u32>,
+    pub process_name: Option<String>,
+    pub process_path: Option<String>,
+    pub path: String,
+    pub confidence: String,
+    pub limitation: Option<String>,
+}
+
 pub trait ReadOnlySystemProvider {
     fn provider_name(&self) -> &'static str;
-    fn capabilities(&self) -> Vec<ProviderCapability>;
+    fn platform(&self) -> SystemPlatform;
+    fn capabilities(&self) -> Vec<CapabilityStatus>;
+    fn list_processes(&self) -> ReadOnlyQueryResult<ProcessInfo>;
+    fn get_process_details(&self, pid: u32) -> ReadOnlyQueryResult<ProcessInfo>;
+    fn list_network_connections(&self) -> ReadOnlyQueryResult<NetworkConnectionInfo>;
+    fn list_startup_entries(&self) -> ReadOnlyQueryResult<StartupEntryInfo>;
+    fn detect_file_lockers(&self, path: &str) -> ReadOnlyQueryResult<FileLockerInfo>;
     fn collect_snapshot_events(&self) -> Vec<AccessEvent>;
 }
 
@@ -96,14 +221,123 @@ impl ReadOnlySystemProvider for MockSystemProvider {
         "mock"
     }
 
-    fn capabilities(&self) -> Vec<ProviderCapability> {
-        vec![ProviderCapability {
-            key: "mock_snapshot_events".to_string(),
-            description: "Returns demo-only events without reading real OS state.".to_string(),
-        }]
+    fn platform(&self) -> SystemPlatform {
+        SystemPlatform::Unsupported
+    }
+
+    fn capabilities(&self) -> Vec<CapabilityStatus> {
+        vec![CapabilityStatus::unsupported(
+            "mock_snapshot_events",
+            "Mock snapshot events",
+            "Returns demo-only events without reading real OS state.",
+        )]
+    }
+
+    fn list_processes(&self) -> ReadOnlyQueryResult<ProcessInfo> {
+        ReadOnlyQueryResult::unsupported(
+            self.provider_name(),
+            "process_inventory",
+            "Process inventory",
+            "Mock provider does not inspect real processes.",
+        )
+    }
+
+    fn get_process_details(&self, _pid: u32) -> ReadOnlyQueryResult<ProcessInfo> {
+        ReadOnlyQueryResult::unsupported(
+            self.provider_name(),
+            "process_details",
+            "Process details",
+            "Mock provider does not inspect real processes.",
+        )
+    }
+
+    fn list_network_connections(&self) -> ReadOnlyQueryResult<NetworkConnectionInfo> {
+        ReadOnlyQueryResult::unsupported(
+            self.provider_name(),
+            "network_connections",
+            "Network connections",
+            "Mock provider does not inspect real network state.",
+        )
+    }
+
+    fn list_startup_entries(&self) -> ReadOnlyQueryResult<StartupEntryInfo> {
+        ReadOnlyQueryResult::unsupported(
+            self.provider_name(),
+            "startup_entries",
+            "Startup entries",
+            "Mock provider does not inspect startup sources.",
+        )
+    }
+
+    fn detect_file_lockers(&self, path: &str) -> ReadOnlyQueryResult<FileLockerInfo> {
+        ReadOnlyQueryResult {
+            platform: self.platform(),
+            provider: self.provider_name().to_string(),
+            capability: CapabilityStatus::unsupported(
+                "file_lockers",
+                "File locker detection",
+                "Mock provider does not inspect file handles.",
+            ),
+            items: vec![FileLockerInfo {
+                pid: None,
+                process_name: None,
+                process_path: None,
+                path: path.to_string(),
+                confidence: "unsupported".to_string(),
+                limitation: Some("No handle inspection was performed.".to_string()),
+            }],
+        }
     }
 
     fn collect_snapshot_events(&self) -> Vec<AccessEvent> {
         mock_demo_events()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        CapabilityStatus, MockSystemProvider, ProcessInfo, ReadOnlySystemProvider, SystemPlatform,
+    };
+
+    #[test]
+    fn capability_status_serializes() {
+        let capability = CapabilityStatus::supported("process_inventory", "Process inventory");
+        let json = serde_json::to_string(&capability).expect("capability should serialize");
+
+        assert!(json.contains("process_inventory"));
+        assert!(json.contains("\"supported\":true"));
+    }
+
+    #[test]
+    fn process_info_round_trips() {
+        let process = ProcessInfo {
+            pid: 42,
+            name: "demo.exe".to_string(),
+            path: Some("C:\\Demo\\demo.exe".to_string()),
+            parent_pid: Some(1),
+            command_line: Some("demo.exe --read-only".to_string()),
+            started_at: Some("2026-01-01T00:00:00Z".to_string()),
+            owner: None,
+            source: "windows_backend".to_string(),
+            confidence: "best_effort".to_string(),
+            limitations: vec!["Some fields may be unavailable without elevation.".to_string()],
+        };
+
+        let json = serde_json::to_string(&process).expect("process should serialize");
+        let restored: ProcessInfo =
+            serde_json::from_str(&json).expect("process should deserialize");
+
+        assert_eq!(restored, process);
+    }
+
+    #[test]
+    fn mock_provider_reports_unsupported_read_only_capability() {
+        let provider = MockSystemProvider;
+        let result = provider.list_processes();
+
+        assert_eq!(provider.platform(), SystemPlatform::Unsupported);
+        assert!(!result.capability.supported);
+        assert!(result.items.is_empty());
     }
 }

@@ -1,6 +1,9 @@
 #![forbid(unsafe_code)]
 
-use jsentinel_core::EventService;
+use jsentinel_core::{
+    CapabilityStatus, EventService, FileLockerInfo, NetworkConnectionInfo, ProcessInfo,
+    ReadOnlyQueryResult, StartupEntryInfo,
+};
 use jsentinel_db::{DashboardSummary, EventQuery};
 use jsentinel_events::{AccessEvent, EventId};
 use std::path::PathBuf;
@@ -56,6 +59,36 @@ fn jsentinel_get_dashboard_summary(
     service.dashboard_summary().map_err(|error| error.to_string())
 }
 
+#[tauri::command]
+fn jsentinel_get_system_capabilities() -> Vec<CapabilityStatus> {
+    jsentinel_windows::system_capabilities()
+}
+
+#[tauri::command]
+fn jsentinel_list_processes() -> ReadOnlyQueryResult<ProcessInfo> {
+    jsentinel_windows::list_processes()
+}
+
+#[tauri::command]
+fn jsentinel_get_process_details(pid: u32) -> ReadOnlyQueryResult<ProcessInfo> {
+    jsentinel_windows::get_process_details(pid)
+}
+
+#[tauri::command]
+fn jsentinel_list_network_connections() -> ReadOnlyQueryResult<NetworkConnectionInfo> {
+    jsentinel_windows::list_network_connections()
+}
+
+#[tauri::command]
+fn jsentinel_list_startup_entries() -> ReadOnlyQueryResult<StartupEntryInfo> {
+    jsentinel_windows::list_startup_entries()
+}
+
+#[tauri::command]
+fn jsentinel_detect_file_lockers(path: String) -> ReadOnlyQueryResult<FileLockerInfo> {
+    jsentinel_windows::detect_file_lockers(path)
+}
+
 fn main() {
     let database_path = dev_database_path();
     let event_service = EventService::initialize_storage(database_path)
@@ -69,7 +102,13 @@ fn main() {
             jsentinel_get_events,
             jsentinel_get_event,
             jsentinel_seed_mock_events,
-            jsentinel_get_dashboard_summary
+            jsentinel_get_dashboard_summary,
+            jsentinel_get_system_capabilities,
+            jsentinel_list_processes,
+            jsentinel_get_process_details,
+            jsentinel_list_network_connections,
+            jsentinel_list_startup_entries,
+            jsentinel_detect_file_lockers
         ])
         .run(tauri::generate_context!())
         .expect("failed to run JSentinel desktop UI");

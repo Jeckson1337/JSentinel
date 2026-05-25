@@ -6,19 +6,23 @@
 - Present UI placeholders for Dashboard, Timeline, Processes, Network, Files, Startup, Settings, and About.
 - Document privacy, security, release, and architecture principles.
 - Prepare safe Rust crate boundaries for future implementation.
+- Store and display local/mock audit-style events.
+- On Windows, query read-only process, network, and startup snapshots best-effort.
+- Show explicit live/fallback/unsupported status in UI.
 
 ## Cannot Do Yet
 
-- Inspect real processes.
-- Inspect real network connections.
-- Inspect real startup entries.
+- Provide real-time monitoring.
+- Guarantee complete process, network, startup, or file visibility.
+- Parse scheduled tasks in the Windows startup backend.
+- Detect file lockers with Restart Manager.
 - Quarantine files.
 - Restore files.
 - Delete files.
 - Kill processes.
 - Block network access.
 - Modify firewall rules.
-- Read or write the Windows registry.
+- Write the Windows registry.
 - Install services or daemons.
 
 ## Will Not Claim

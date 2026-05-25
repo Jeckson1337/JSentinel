@@ -8,6 +8,7 @@ import {
   type DashboardSummary,
 } from "../events";
 import type { Dictionary } from "../i18n";
+import { loadSystemCapabilities, modeLabel, type CapabilityStatus, type SystemDataMode } from "../system";
 import type { ScreenId } from "../types";
 import {
   EmptyState,
@@ -29,6 +30,8 @@ export function DashboardScreen({ t, refreshToken, onNavigate }: DashboardScreen
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [events, setEvents] = useState<AccessEvent[]>([]);
   const [dataSource, setDataSource] = useState<"tauri_sqlite" | "frontend_mock">("frontend_mock");
+  const [capabilities, setCapabilities] = useState<CapabilityStatus[]>([]);
+  const [backendMode, setBackendMode] = useState<SystemDataMode>("unsupported_platform");
 
   useEffect(() => {
     let cancelled = false;
@@ -36,11 +39,14 @@ export function DashboardScreen({ t, refreshToken, onNavigate }: DashboardScreen
     Promise.all([
       loadDashboardSummary(),
       loadEvents({ kind: null, severity: null, text: null, limit: 5 }),
-    ]).then(([summaryResult, eventsResult]) => {
+      loadSystemCapabilities(),
+    ]).then(([summaryResult, eventsResult, capabilityResult]) => {
       if (!cancelled) {
         setSummary(summaryResult.data);
         setEvents(eventsResult.data);
         setDataSource(summaryResult.source);
+        setCapabilities(capabilityResult.data);
+        setBackendMode(capabilityResult.mode);
       }
     });
 
@@ -122,6 +128,26 @@ export function DashboardScreen({ t, refreshToken, onNavigate }: DashboardScreen
               {t.dashboardSummary.latestEvent}:{" "}
               {summary ? summaryTimestamp(summary) ?? t.timeline.noEventsYet : t.common.loading}
             </p>
+          </SectionCard>
+
+          <SectionCard title={t.dashboard.windowsBackend} description={t.dashboard.windowsBackendDescription}>
+            <div className="badge-list">
+              <StatusBadge
+                label={modeLabel(backendMode, t.systemDataModes)}
+                tone={backendMode === "live_windows" ? "success" : "warning"}
+              />
+            </div>
+            <div className="capability-list">
+              {capabilities.slice(0, 4).map((capability) => (
+                <div className="capability-row" key={capability.id}>
+                  <span>{capability.label}</span>
+                  <StatusBadge
+                    label={capability.supported ? t.system.supported : t.system.unsupported}
+                    tone={capability.supported ? "success" : "neutral"}
+                  />
+                </div>
+              ))}
+            </div>
           </SectionCard>
 
           <SectionCard title={t.dashboard.quickActions} description={t.dashboard.quickActionsDescription}>

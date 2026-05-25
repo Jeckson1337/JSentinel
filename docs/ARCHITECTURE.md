@@ -37,6 +37,14 @@ Package 2 adds a product-oriented desktop UI over the Package 1 event model. Das
 
 Risky controls are visible only as disabled placeholders. The UI still does not execute privileged actions or call OS-specific backends directly.
 
+## Package 3 Windows Read-Only Backend
+
+Package 3 adds the first real OS backend surface for Windows, but only for read-only snapshots. Shared DTOs live in `jsentinel-core`, Windows-specific collection lives in `jsentinel-windows`, and Tauri exposes safe commands for capabilities, process inventory, network connections, startup entries, and the file-locker detection contract.
+
+The UI tries live Windows data first and then falls back to mock/event-backed views when commands are unavailable or unsupported. File locker detection remains an explicit unsupported/best-effort contract in this package.
+
+Package 3 still does not implement process kill, firewall changes, registry writes, startup disable/restore, quarantine, delete-on-reboot, force unlock, real-time file watching, device monitoring, telemetry, analytics, ad SDKs, or runtime external network calls.
+
 ## Privilege Model
 
 The UI must not execute privileged actions directly. Future privileged operations should flow through:
