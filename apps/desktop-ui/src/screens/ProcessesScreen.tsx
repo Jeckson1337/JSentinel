@@ -3,7 +3,6 @@ import { loadEvents, type AccessEvent } from "../events";
 import type { Dictionary } from "../i18n";
 import { buildProcessSummaries, type ProcessSummary } from "../viewModels";
 import {
-  DisabledActionButton,
   EmptyState,
   ErrorState,
   RefreshBar,
@@ -11,6 +10,7 @@ import {
   SeverityBadge,
   StatusBadge,
 } from "../components/ui";
+import { ActionButton } from "../components/actions";
 import {
   loadProcessDetails,
   loadProcesses,
@@ -170,9 +170,15 @@ export function ProcessesScreen({ t, refreshToken }: { t: Dictionary; refreshTok
                 </div>
               </dl>
               <div className="action-grid">
-                <DisabledActionButton>{t.disabledActions.killProcess}</DisabledActionButton>
-                <DisabledActionButton>{t.disabledActions.openLocation}</DisabledActionButton>
-                <DisabledActionButton>{t.disabledActions.quarantine}</DisabledActionButton>
+                <ActionButton kind="kill_process" sourceScreen="processes" target={String(selectedLive.pid)} targetDisplayName={selectedLive.name} t={t}>
+                  {t.disabledActions.killProcess}
+                </ActionButton>
+                <ActionButton kind="reveal_path" sourceScreen="processes" target={selectedLive.path ?? ""} targetDisplayName={selectedLive.name} t={t}>
+                  {t.disabledActions.openLocation}
+                </ActionButton>
+                <ActionButton kind="quarantine_file" sourceScreen="processes" target={selectedLive.path ?? ""} targetDisplayName={selectedLive.name} t={t}>
+                  {t.disabledActions.quarantine}
+                </ActionButton>
               </div>
               <p>{t.processes.backendReadOnlyNotice}</p>
             </div>
@@ -185,9 +191,15 @@ export function ProcessesScreen({ t, refreshToken }: { t: Dictionary; refreshTok
                 <SeverityBadge severity={selected.severity} t={t} />
               </div>
               <div className="action-grid">
-                <DisabledActionButton>{t.disabledActions.killProcess}</DisabledActionButton>
-                <DisabledActionButton>{t.disabledActions.openLocation}</DisabledActionButton>
-                <DisabledActionButton>{t.disabledActions.quarantine}</DisabledActionButton>
+                <ActionButton kind="kill_process" sourceScreen="processes" target={String(selected.pid ?? "")} targetDisplayName={selected.name} t={t}>
+                  {t.disabledActions.killProcess}
+                </ActionButton>
+                <ActionButton kind="reveal_path" sourceScreen="processes" target={selected.path ?? ""} targetDisplayName={selected.name} t={t}>
+                  {t.disabledActions.openLocation}
+                </ActionButton>
+                <ActionButton kind="quarantine_file" sourceScreen="processes" target={selected.path ?? ""} targetDisplayName={selected.name} t={t}>
+                  {t.disabledActions.quarantine}
+                </ActionButton>
               </div>
               <p>{t.processes.backendNotice}</p>
             </div>

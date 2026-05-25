@@ -11,6 +11,9 @@
 - Show explicit live/fallback/unsupported status in UI.
 - Refresh read-only snapshots manually.
 - Show local read-only diagnostic counts without upload.
+- Plan future actions through a policy layer.
+- Show confirmation dialogs and disabled reasons for actions.
+- Store local action audit records for denied, dry-run, unsupported, or completed action paths.
 
 ## Cannot Do Yet
 
@@ -28,6 +31,8 @@
 - Modify firewall rules.
 - Write the Windows registry.
 - Install services or daemons.
+- Execute destructive actions from the Package 4A framework.
+- Run automatic mitigation in the background.
 
 ## Will Not Claim
 

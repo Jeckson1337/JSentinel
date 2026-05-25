@@ -2,6 +2,7 @@
 
 use jsentinel_db::{init_db, DashboardSummary, Database, DbResult, EventQuery};
 use jsentinel_events::{mock_demo_events, AccessEvent, EventId};
+use jsentinel_policy::{ActionHistoryQuery, ActionResult};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -75,6 +76,18 @@ impl EventService {
 
     pub fn dashboard_summary(&self) -> DbResult<DashboardSummary> {
         self.database.dashboard_summary()
+    }
+
+    pub fn insert_action_history(&self, result: &ActionResult) -> DbResult<()> {
+        self.database.insert_action_history(result)
+    }
+
+    pub fn list_action_history(&self, query: ActionHistoryQuery) -> DbResult<Vec<ActionResult>> {
+        self.database.list_action_history(query)
+    }
+
+    pub fn get_action_history(&self, id: &str) -> DbResult<Option<ActionResult>> {
+        self.database.get_action_history(id)
     }
 }
 

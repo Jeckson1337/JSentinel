@@ -6,6 +6,9 @@ use jsentinel_core::{
 };
 use jsentinel_db::{DashboardSummary, EventQuery};
 use jsentinel_events::{AccessEvent, EventId};
+use jsentinel_policy::{
+    ActionHistoryQuery, ActionPlan, ActionRequest, ActionResult, ActionStatus, PolicyEngine,
+};
 use serde::Serialize;
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -116,6 +119,72 @@ fn jsentinel_get_read_only_diagnostics() -> ReadOnlyDiagnostics {
     }
 }
 
+#[tauri::command]
+fn jsentinel_plan_action(request: ActionRequest) -> ActionPlan {
+    PolicyEngine::plan_action(request)
+}
+
+#[tauri::command]
+fn jsentinel_execute_safe_action(
+    state: tauri::State<'_, AppState>,
+    request: ActionRequest,
+) -> Result<ActionResult, String> {
+    let plan = PolicyEngine::plan_action(request);
+    let status = if PolicyEngine::is_action_enabled(plan.request.kind) {
+        ActionStatus::DryRun
+    } else {
+        ActionStatus::Denied
+    };
+    let message = if status == ActionStatus::DryRun {
+        "Package 4A dry-run only. No OS action was executed.".to_string()
+    } else {
+        plan.disabled_reason
+            .clone()
+            .unwrap_or_else(|| "Action is disabled by policy in Package 4A.".to_string())
+    };
+    let mut result = ActionResult::from_plan(&plan, status, message);
+    if status == ActionStatus::Denied {
+        result.error = Some("Denied by Package 4A policy.".to_string());
+    }
+
+    let service = state
+        .event_service
+        .lock()
+        .map_err(|_| "event service lock was poisoned".to_string())?;
+    service
+        .insert_action_history(&result)
+        .map_err(|error| error.to_string())?;
+    Ok(result)
+}
+
+#[tauri::command]
+fn jsentinel_list_action_history(
+    state: tauri::State<'_, AppState>,
+    query: ActionHistoryQuery,
+) -> Result<Vec<ActionResult>, String> {
+    let service = state
+        .event_service
+        .lock()
+        .map_err(|_| "event service lock was poisoned".to_string())?;
+    service
+        .list_action_history(query)
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn jsentinel_get_action_history(
+    state: tauri::State<'_, AppState>,
+    id: String,
+) -> Result<Option<ActionResult>, String> {
+    let service = state
+        .event_service
+        .lock()
+        .map_err(|_| "event service lock was poisoned".to_string())?;
+    service
+        .get_action_history(&id)
+        .map_err(|error| error.to_string())
+}
+
 fn main() {
     let database_path = dev_database_path();
     let event_service = EventService::initialize_storage(database_path)
@@ -136,7 +205,11 @@ fn main() {
             jsentinel_list_network_connections,
             jsentinel_list_startup_entries,
             jsentinel_detect_file_lockers,
-            jsentinel_get_read_only_diagnostics
+            jsentinel_get_read_only_diagnostics,
+            jsentinel_plan_action,
+            jsentinel_execute_safe_action,
+            jsentinel_list_action_history,
+            jsentinel_get_action_history
         ])
         .run(tauri::generate_context!())
         .expect("failed to run JSentinel desktop UI");

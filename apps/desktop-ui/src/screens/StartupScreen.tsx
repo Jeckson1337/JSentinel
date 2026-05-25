@@ -3,7 +3,6 @@ import { loadEvents, type AccessEvent } from "../events";
 import type { Dictionary } from "../i18n";
 import { buildStartupRows } from "../viewModels";
 import {
-  DisabledActionButton,
   EmptyState,
   ErrorState,
   FilterSelect,
@@ -12,6 +11,7 @@ import {
   SeverityBadge,
   StatusBadge,
 } from "../components/ui";
+import { ActionButton } from "../components/actions";
 import {
   loadStartupEntries,
   modeLabel,
@@ -133,9 +133,15 @@ export function StartupScreen({ t, refreshToken }: { t: Dictionary; refreshToken
       </SectionCard>
       <SectionCard title={t.startup.actionsTitle} description={t.startup.actionsDescription}>
         <div className="action-grid">
-          <DisabledActionButton>{t.disabledActions.disableStartup}</DisabledActionButton>
-          <DisabledActionButton>{t.disabledActions.restoreStartup}</DisabledActionButton>
-          <DisabledActionButton>{t.disabledActions.openSource}</DisabledActionButton>
+          <ActionButton kind="disable_startup" sourceScreen="startup" target="startup-placeholder" targetDisplayName={t.startup.entriesTitle} t={t}>
+            {t.disabledActions.disableStartup}
+          </ActionButton>
+          <ActionButton kind="restore_startup" sourceScreen="startup" target="startup-placeholder" targetDisplayName={t.startup.entriesTitle} t={t}>
+            {t.disabledActions.restoreStartup}
+          </ActionButton>
+          <ActionButton kind="reveal_path" sourceScreen="startup" target="" targetDisplayName={t.startup.entriesTitle} t={t}>
+            {t.disabledActions.openSource}
+          </ActionButton>
         </div>
       </SectionCard>
     </section>

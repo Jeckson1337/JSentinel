@@ -4,6 +4,7 @@ use jsentinel_events::{
     mock_demo_events, AccessEvent, EventId, EventKind, EventSeverity, EventSource, EventTimestamp,
     ProcessRef,
 };
+use jsentinel_policy::{ActionHistoryQuery, ActionKind, ActionResult, ActionStatus, PolicyEngine};
 use rusqlite::types::Type;
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
@@ -41,6 +42,7 @@ pub enum DbError {
     Json(serde_json::Error),
     Io(std::io::Error),
     EventParse(String),
+    ActionParse(String),
 }
 
 impl fmt::Display for DbError {
@@ -50,6 +52,7 @@ impl fmt::Display for DbError {
             Self::Json(error) => write!(formatter, "json error: {error}"),
             Self::Io(error) => write!(formatter, "io error: {error}"),
             Self::EventParse(error) => write!(formatter, "event parse error: {error}"),
+            Self::ActionParse(error) => write!(formatter, "action parse error: {error}"),
         }
     }
 }
@@ -169,14 +172,47 @@ impl Database {
                 target TEXT NOT NULL,
                 risk_level TEXT NOT NULL,
                 result TEXT NOT NULL,
-                error TEXT NULL
+                error TEXT NULL,
+                message TEXT NULL,
+                started_at TEXT NULL,
+                finished_at TEXT NULL,
+                metadata_json TEXT NULL
             );
 
             INSERT OR IGNORE INTO schema_migrations (version, applied_at)
             VALUES (1, datetime('now'));
             "#,
         )?;
+        self.ensure_action_history_columns()?;
         Ok(())
+    }
+
+    fn ensure_action_history_columns(&self) -> DbResult<()> {
+        for (column, definition) in [
+            ("message", "TEXT NULL"),
+            ("started_at", "TEXT NULL"),
+            ("finished_at", "TEXT NULL"),
+            ("metadata_json", "TEXT NULL"),
+        ] {
+            if !self.column_exists("action_history", column)? {
+                self.conn.execute(
+                    &format!("ALTER TABLE action_history ADD COLUMN {column} {definition}"),
+                    [],
+                )?;
+            }
+        }
+        Ok(())
+    }
+
+    fn column_exists(&self, table: &str, column: &str) -> DbResult<bool> {
+        let mut statement = self.conn.prepare(&format!("PRAGMA table_info({table})"))?;
+        let columns = statement.query_map([], |row| row.get::<_, String>(1))?;
+        for existing in columns {
+            if existing? == column {
+                return Ok(true);
+            }
+        }
+        Ok(false)
     }
 
     pub fn insert_event(&self, event: &AccessEvent) -> DbResult<()> {
@@ -344,6 +380,113 @@ impl Database {
         Ok(changed)
     }
 
+    pub fn insert_action_history(&self, result: &ActionResult) -> DbResult<()> {
+        let metadata_json = result
+            .metadata_json
+            .as_ref()
+            .map(serde_json::to_string)
+            .transpose()?;
+        let risk_level = PolicyEngine::classify_risk(result.kind).as_str().to_string();
+
+        self.conn.execute(
+            r#"
+            INSERT OR REPLACE INTO action_history (
+                id,
+                timestamp,
+                action_type,
+                target,
+                risk_level,
+                result,
+                error,
+                message,
+                started_at,
+                finished_at,
+                metadata_json
+            )
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+            "#,
+            params![
+                result.request_id.as_str(),
+                result.finished_at.as_str(),
+                result.kind.as_str(),
+                result.target.as_str(),
+                risk_level,
+                result.status.as_str(),
+                result.error.as_deref(),
+                result.message.as_str(),
+                result.started_at.as_str(),
+                result.finished_at.as_str(),
+                metadata_json,
+            ],
+        )?;
+
+        Ok(())
+    }
+
+    pub fn list_action_history(&self, query: ActionHistoryQuery) -> DbResult<Vec<ActionResult>> {
+        let kind = query.kind.map(|kind| kind.as_str().to_string());
+        let status = query.status.map(|status| status.as_str().to_string());
+        let text = query
+            .text
+            .as_ref()
+            .filter(|value| !value.trim().is_empty())
+            .map(|value| format!("%{}%", value.trim()));
+        let limit = query.limit.unwrap_or(50).clamp(1, 500) as i64;
+
+        let mut statement = self.conn.prepare(
+            r#"
+            SELECT
+                id,
+                action_type,
+                target,
+                started_at,
+                finished_at,
+                result,
+                message,
+                error,
+                metadata_json
+            FROM action_history
+            WHERE (?1 IS NULL OR action_type = ?1)
+              AND (?2 IS NULL OR result = ?2)
+              AND (
+                ?3 IS NULL
+                OR lower(action_type) LIKE lower(?3)
+                OR lower(target) LIKE lower(?3)
+                OR lower(COALESCE(message, '')) LIKE lower(?3)
+              )
+            ORDER BY timestamp DESC
+            LIMIT ?4
+            "#,
+        )?;
+
+        let rows = statement.query_map(params![kind, status, text, limit], row_to_action_result)?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
+    }
+
+    pub fn get_action_history(&self, id: &str) -> DbResult<Option<ActionResult>> {
+        self.conn
+            .query_row(
+                r#"
+                SELECT
+                    id,
+                    action_type,
+                    target,
+                    started_at,
+                    finished_at,
+                    result,
+                    message,
+                    error,
+                    metadata_json
+                FROM action_history
+                WHERE id = ?1
+                "#,
+                params![id],
+                row_to_action_result,
+            )
+            .optional()
+            .map_err(DbError::from)
+    }
+
     fn count_where(&self, condition: &str) -> DbResult<u64> {
         let sql = format!("SELECT COUNT(*) FROM events WHERE {condition}");
         let count: i64 = self.conn.query_row(&sql, [], |row| row.get(0))?;
@@ -400,6 +543,37 @@ fn row_to_event(row: &rusqlite::Row<'_>) -> rusqlite::Result<AccessEvent> {
         target,
         metadata_json,
         confidence: None,
+    })
+}
+
+fn row_to_action_result(row: &rusqlite::Row<'_>) -> rusqlite::Result<ActionResult> {
+    let request_id: String = row.get(0)?;
+    let kind: String = row.get(1)?;
+    let target: String = row.get(2)?;
+    let started_at: Option<String> = row.get(3)?;
+    let finished_at: Option<String> = row.get(4)?;
+    let status: String = row.get(5)?;
+    let message: Option<String> = row.get(6)?;
+    let error: Option<String> = row.get(7)?;
+    let metadata_json: Option<String> = row.get(8)?;
+
+    let kind = ActionKind::from_str(&kind)
+        .map_err(|error| rusqlite::Error::FromSqlConversionFailure(1, Type::Text, Box::new(error)))?;
+    let status = ActionStatus::from_str(&status)
+        .map_err(|error| rusqlite::Error::FromSqlConversionFailure(5, Type::Text, Box::new(error)))?;
+    let metadata_json = metadata_json.and_then(|value| serde_json::from_str::<Value>(&value).ok());
+    let timestamp = now_timestamp().as_str().to_string();
+
+    Ok(ActionResult {
+        request_id,
+        kind,
+        target,
+        started_at: started_at.unwrap_or_else(|| timestamp.clone()),
+        finished_at: finished_at.unwrap_or(timestamp),
+        status,
+        message: message.unwrap_or_default(),
+        error,
+        metadata_json,
     })
 }
 
@@ -505,5 +679,63 @@ mod tests {
         assert_eq!(summary.critical, 1);
         assert_eq!(summary.process_events, 1);
         assert!(summary.demo_data_only);
+    }
+
+    #[test]
+    fn action_history_insert_list_and_get() {
+        let database = init_db(temp_db_path("action-history")).expect("database should initialize");
+        let request = jsentinel_policy::ActionRequest::new(
+            ActionKind::RevealPath,
+            "C:\\Demo",
+            "Demo folder",
+            "files",
+        );
+        let plan = jsentinel_policy::PolicyEngine::plan_action(request);
+        let result = ActionResult::from_plan(&plan, ActionStatus::DryRun, "Dry run only.");
+
+        database
+            .insert_action_history(&result)
+            .expect("action result insert should work");
+
+        let history = database
+            .list_action_history(ActionHistoryQuery::default())
+            .expect("action history should list");
+        let fetched = database
+            .get_action_history(&result.request_id)
+            .expect("action history get should work")
+            .expect("action result should exist");
+
+        assert_eq!(history.len(), 1);
+        assert_eq!(history[0].kind, ActionKind::RevealPath);
+        assert_eq!(fetched.status, ActionStatus::DryRun);
+    }
+
+    #[test]
+    fn action_history_filters_by_kind() {
+        let database =
+            init_db(temp_db_path("action-history-filter")).expect("database should initialize");
+        let request = jsentinel_policy::ActionRequest::new(
+            ActionKind::RevealPath,
+            "C:\\Demo",
+            "Demo folder",
+            "files",
+        );
+        let plan = jsentinel_policy::PolicyEngine::plan_action(request);
+        let result = ActionResult::from_plan(&plan, ActionStatus::DryRun, "Dry run only.");
+
+        database
+            .insert_action_history(&result)
+            .expect("action result insert should work");
+
+        let history = database
+            .list_action_history(ActionHistoryQuery {
+                kind: Some(ActionKind::RevealPath),
+                status: Some(ActionStatus::DryRun),
+                text: Some("Demo".to_string()),
+                limit: Some(10),
+            })
+            .expect("filtered action history should list");
+
+        assert_eq!(history.len(), 1);
     }
 }

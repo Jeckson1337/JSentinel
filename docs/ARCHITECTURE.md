@@ -47,6 +47,12 @@ Package 3 still does not implement process kill, firewall changes, registry writ
 
 Package 3.5 hardens this layer with structured capability status, serialized read-only backend errors, manual refresh controls, local diagnostic counts, and clearer live/partial/unsupported/mock UI states. Refresh remains read-only snapshot collection.
 
+## Package 4A Safe Action Framework
+
+Package 4A adds action DTOs, policy planning, confirmation UI, and a local SQLite audit log. The action boundary is data-first: UI creates an `ActionRequest`, `jsentinel-policy` returns an `ActionPlan`, the UI shows confirmation or a disabled reason, and only the backend command path can record an `ActionResult`.
+
+In this package safe actions are dry-run only, and dangerous actions are planned/disabled. No process kill, firewall change, registry write, startup mutation, quarantine, delete-on-reboot, or force unlock is implemented.
+
 ## Privilege Model
 
 The UI must not execute privileged actions directly. Future privileged operations should flow through:

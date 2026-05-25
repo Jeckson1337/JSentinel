@@ -263,6 +263,56 @@
     "restoreStartup": "Restore disabled",
     "openSource": "Open source disabled"
   },
+  "actionRisk": {
+    "safe": "Safe",
+    "caution": "Caution",
+    "dangerous": "Dangerous"
+  },
+  "actionAvailability": {
+    "available": "Available",
+    "disabled": "Disabled",
+    "unsupported": "Unsupported",
+    "planned": "Planned",
+    "requires_admin": "Requires admin",
+    "requires_confirmation": "Requires confirmation"
+  },
+  "actionStatus": {
+    "succeeded": "Succeeded",
+    "failed": "Failed",
+    "denied": "Denied",
+    "cancelled": "Cancelled",
+    "unsupported": "Unsupported",
+    "dry_run": "Dry run"
+  },
+  "actionKinds": {
+    "reveal_path": "Reveal path",
+    "open_windows_settings": "Open Windows settings",
+    "kill_process": "Kill process",
+    "block_network": "Block network",
+    "unblock_network": "Unblock network",
+    "disable_startup": "Disable startup",
+    "restore_startup": "Restore startup",
+    "quarantine_file": "Quarantine file",
+    "restore_quarantine": "Restore quarantine",
+    "schedule_delete_on_reboot": "Delete on reboot",
+    "detect_file_lockers": "Detect file lockers"
+  },
+  "actions": {
+    "cancel": "Cancel",
+    "confirmDryRun": "Confirm dry run",
+    "disabledReason": "Policy",
+    "auditResult": "Audit result",
+    "historyTitle": "Action history",
+    "historyDescription": "Local audit trail for policy-gated actions. No upload or auto-action.",
+    "noHistory": "No action history yet",
+    "noHistoryDescription": "Actions that reach the policy-gated execution path will appear here.",
+    "kind": "Action",
+    "status": "Status",
+    "target": "Target",
+    "timestamp": "Timestamp",
+    "result": "Result",
+    "noTarget": "No target"
+  },
   "settings": {
     "title": "Settings",
     "subtitle": "Local controls and privacy explanations for the current build.",
@@ -281,6 +331,12 @@
     "releaseChannel": "Release channel",
     "releaseDescription": "Primary distribution is planned through GitHub Releases with checksums, changelog, limitations, and privacy notes.",
     "releaseDetails": "No auto-updater is included in v1 if it would require unclear server or telemetry behavior.",
+    "safeActions": "Safe action framework",
+    "safeActionsDescription": "Actions are planned through policy first. Dangerous actions remain disabled in Package 4A.",
+    "policyGated": "Policy-gated",
+    "confirmationRequired": "Confirmation required",
+    "localAuditOnly": "Local audit only",
+    "noAutoActions": "JSentinel does not run background mitigation or automatic actions.",
     "demoData": "Demo data",
     "demoDataDescription": "Seed local mock events for UI and SQLite validation. This does not read real OS state.",
     "seedDemoEvents": "Seed demo events",

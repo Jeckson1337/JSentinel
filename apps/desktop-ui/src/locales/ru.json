@@ -263,6 +263,56 @@
     "restoreStartup": "Restore disabled",
     "openSource": "Open source disabled"
   },
+  "actionRisk": {
+    "safe": "Safe",
+    "caution": "Caution",
+    "dangerous": "Dangerous"
+  },
+  "actionAvailability": {
+    "available": "Available",
+    "disabled": "Disabled",
+    "unsupported": "Unsupported",
+    "planned": "Planned",
+    "requires_admin": "Requires admin",
+    "requires_confirmation": "Requires confirmation"
+  },
+  "actionStatus": {
+    "succeeded": "Succeeded",
+    "failed": "Failed",
+    "denied": "Denied",
+    "cancelled": "Cancelled",
+    "unsupported": "Unsupported",
+    "dry_run": "Dry run"
+  },
+  "actionKinds": {
+    "reveal_path": "Reveal path",
+    "open_windows_settings": "Open Windows settings",
+    "kill_process": "Kill process",
+    "block_network": "Block network",
+    "unblock_network": "Unblock network",
+    "disable_startup": "Disable startup",
+    "restore_startup": "Restore startup",
+    "quarantine_file": "Quarantine file",
+    "restore_quarantine": "Restore quarantine",
+    "schedule_delete_on_reboot": "Delete on reboot",
+    "detect_file_lockers": "Detect file lockers"
+  },
+  "actions": {
+    "cancel": "Отмена",
+    "confirmDryRun": "Подтвердить dry run",
+    "disabledReason": "Policy",
+    "auditResult": "Audit result",
+    "historyTitle": "Action history",
+    "historyDescription": "Локальный audit trail для policy-gated actions. Без upload и auto-action.",
+    "noHistory": "Action history пока пустой",
+    "noHistoryDescription": "Actions, дошедшие до policy-gated execution path, появятся здесь.",
+    "kind": "Action",
+    "status": "Status",
+    "target": "Target",
+    "timestamp": "Время",
+    "result": "Result",
+    "noTarget": "Нет target"
+  },
   "settings": {
     "title": "Настройки",
     "subtitle": "Локальные controls и privacy-пояснения для текущей сборки.",
@@ -281,6 +331,12 @@
     "releaseChannel": "Канал релизов",
     "releaseDescription": "Основной канал распространения - GitHub Releases с checksums, changelog, known limitations и privacy notes.",
     "releaseDetails": "Auto-updater не включается в v1, если он требует неясной серверной или telemetry-логики.",
+    "safeActions": "Safe action framework",
+    "safeActionsDescription": "Actions сначала проходят policy planning. Dangerous actions остаются disabled в Package 4A.",
+    "policyGated": "Policy-gated",
+    "confirmationRequired": "Требуется подтверждение",
+    "localAuditOnly": "Только локальный audit",
+    "noAutoActions": "JSentinel не запускает background mitigation или automatic actions.",
     "demoData": "Demo data",
     "demoDataDescription": "Заполняет локальные mock events для проверки UI и SQLite. Это не читает реальное состояние ОС.",
     "seedDemoEvents": "Добавить demo events",

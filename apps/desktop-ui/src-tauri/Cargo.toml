@@ -12,6 +12,7 @@ tauri-build = { version = "2", features = [] }
 jsentinel-core = { path = "../../../crates/jsentinel-core" }
 jsentinel-db = { path = "../../../crates/jsentinel-db" }
 jsentinel-events = { path = "../../../crates/jsentinel-events" }
+jsentinel-policy = { path = "../../../crates/jsentinel-policy" }
 jsentinel-windows = { path = "../../../crates/jsentinel-windows" }
 tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }

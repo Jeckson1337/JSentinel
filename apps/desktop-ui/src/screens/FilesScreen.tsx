@@ -3,7 +3,6 @@ import { loadEvents, type AccessEvent } from "../events";
 import type { Dictionary } from "../i18n";
 import { buildFileRows } from "../viewModels";
 import {
-  DisabledActionButton,
   EmptyState,
   ErrorState,
   EventKindBadge,
@@ -12,6 +11,7 @@ import {
   SeverityBadge,
   StatusBadge,
 } from "../components/ui";
+import { ActionButton } from "../components/actions";
 import {
   detectFileLockers,
   modeLabel,
@@ -104,7 +104,9 @@ export function FilesScreen({ t, refreshToken }: { t: Dictionary; refreshToken: 
           />
         </label>
         <div className="action-grid">
-          <DisabledActionButton>{t.disabledActions.revealFile}</DisabledActionButton>
+          <ActionButton kind="reveal_path" sourceScreen="files" target={path.trim()} targetDisplayName={path.trim() || t.files.path} t={t}>
+            {t.disabledActions.revealFile}
+          </ActionButton>
           <button
             className="secondary-button"
             type="button"
@@ -113,8 +115,12 @@ export function FilesScreen({ t, refreshToken }: { t: Dictionary; refreshToken: 
           >
             {t.files.checkLockersReadOnly}
           </button>
-          <DisabledActionButton>{t.disabledActions.quarantine}</DisabledActionButton>
-          <DisabledActionButton>{t.disabledActions.deleteOnReboot}</DisabledActionButton>
+          <ActionButton kind="quarantine_file" sourceScreen="files" target={path.trim()} targetDisplayName={path.trim() || t.files.path} t={t}>
+            {t.disabledActions.quarantine}
+          </ActionButton>
+          <ActionButton kind="schedule_delete_on_reboot" sourceScreen="files" target={path.trim()} targetDisplayName={path.trim() || t.files.path} t={t}>
+            {t.disabledActions.deleteOnReboot}
+          </ActionButton>
         </div>
         {warning && <ErrorState title={t.system.backendWarning} description={warning} />}
         {lockerResult && (

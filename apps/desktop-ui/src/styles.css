@@ -286,6 +286,37 @@ p,
   gap: 8px;
 }
 
+.action-button-stack {
+  display: grid;
+  gap: 6px;
+}
+
+.dialog-backdrop {
+  align-items: center;
+  background: rgba(4, 8, 7, 0.72);
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  left: 0;
+  padding: 20px;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 20;
+}
+
+.dialog-panel {
+  background: #101614;
+  border: 1px solid #40534a;
+  border-radius: 8px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+  display: grid;
+  gap: 16px;
+  max-width: 560px;
+  padding: 20px;
+  width: min(560px, 100%);
+}
+
 .badge {
   align-items: center;
   background: #202a26;

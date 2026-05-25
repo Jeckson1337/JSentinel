@@ -3,7 +3,6 @@ import { loadEvents, type AccessEvent } from "../events";
 import type { Dictionary } from "../i18n";
 import { buildNetworkRows } from "../viewModels";
 import {
-  DisabledActionButton,
   EmptyState,
   ErrorState,
   FilterSelect,
@@ -12,6 +11,7 @@ import {
   SeverityBadge,
   StatusBadge,
 } from "../components/ui";
+import { ActionButton } from "../components/actions";
 import {
   loadNetworkConnections,
   modeLabel,
@@ -133,8 +133,12 @@ export function NetworkScreen({ t, refreshToken }: { t: Dictionary; refreshToken
       </SectionCard>
       <SectionCard title={t.network.rulesTitle} description={t.network.rulesDescription}>
         <div className="action-grid">
-          <DisabledActionButton>{t.disabledActions.blockNetwork}</DisabledActionButton>
-          <DisabledActionButton>{t.disabledActions.unblockNetwork}</DisabledActionButton>
+          <ActionButton kind="block_network" sourceScreen="network" target="network-policy-placeholder" targetDisplayName={t.network.rulesTitle} t={t}>
+            {t.disabledActions.blockNetwork}
+          </ActionButton>
+          <ActionButton kind="unblock_network" sourceScreen="network" target="network-policy-placeholder" targetDisplayName={t.network.rulesTitle} t={t}>
+            {t.disabledActions.unblockNetwork}
+          </ActionButton>
         </div>
       </SectionCard>
     </section>

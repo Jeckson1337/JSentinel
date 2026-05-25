@@ -1,5 +1,6 @@
 import type { Dictionary, Locale } from "../i18n";
 import { SectionCard, StatusBadge } from "../components/ui";
+import { ActionHistoryPanel } from "../components/actions";
 
 type SettingsScreenProps = {
   locale: Locale;
@@ -56,6 +57,19 @@ export function SettingsScreen({
 
         <SectionCard title={t.settings.releaseChannel} description={t.settings.releaseDescription}>
           <p className="muted-line">{t.settings.releaseDetails}</p>
+        </SectionCard>
+
+        <SectionCard title={t.settings.safeActions} description={t.settings.safeActionsDescription}>
+          <div className="badge-list">
+            <StatusBadge label={t.settings.policyGated} tone="success" />
+            <StatusBadge label={t.settings.confirmationRequired} tone="warning" />
+            <StatusBadge label={t.settings.localAuditOnly} tone="info" />
+          </div>
+          <p className="muted-line">{t.settings.noAutoActions}</p>
+        </SectionCard>
+
+        <SectionCard title={t.actions.historyTitle} description={t.actions.historyDescription}>
+          <ActionHistoryPanel t={t} />
         </SectionCard>
       </div>
     </section>
