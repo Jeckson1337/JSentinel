@@ -173,7 +173,15 @@ export function ProcessesScreen({ t, refreshToken }: { t: Dictionary; refreshTok
                 <ActionButton kind="kill_process" sourceScreen="processes" target={String(selectedLive.pid)} targetDisplayName={selectedLive.name} t={t}>
                   {t.disabledActions.killProcess}
                 </ActionButton>
-                <ActionButton kind="reveal_path" sourceScreen="processes" target={selectedLive.path ?? ""} targetDisplayName={selectedLive.name} t={t}>
+                <ActionButton
+                  kind="reveal_path"
+                  sourceScreen="processes"
+                  target={selectedLive.path ?? ""}
+                  targetDisplayName={selectedLive.name}
+                  disabled={!selectedLive.path}
+                  disabledReason={t.actions.localPathRequired}
+                  t={t}
+                >
                   {t.disabledActions.openLocation}
                 </ActionButton>
                 <ActionButton kind="quarantine_file" sourceScreen="processes" target={selectedLive.path ?? ""} targetDisplayName={selectedLive.name} t={t}>
@@ -194,7 +202,15 @@ export function ProcessesScreen({ t, refreshToken }: { t: Dictionary; refreshTok
                 <ActionButton kind="kill_process" sourceScreen="processes" target={String(selected.pid ?? "")} targetDisplayName={selected.name} t={t}>
                   {t.disabledActions.killProcess}
                 </ActionButton>
-                <ActionButton kind="reveal_path" sourceScreen="processes" target={selected.path ?? ""} targetDisplayName={selected.name} t={t}>
+                <ActionButton
+                  kind="reveal_path"
+                  sourceScreen="processes"
+                  target={selected.path ?? ""}
+                  targetDisplayName={selected.name}
+                  disabled={!selected.path}
+                  disabledReason={t.actions.localPathRequired}
+                  t={t}
+                >
                   {t.disabledActions.openLocation}
                 </ActionButton>
                 <ActionButton kind="quarantine_file" sourceScreen="processes" target={selected.path ?? ""} targetDisplayName={selected.name} t={t}>

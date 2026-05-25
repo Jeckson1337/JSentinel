@@ -131,6 +131,27 @@ export function NetworkScreen({ t, refreshToken }: { t: Dictionary; refreshToken
           ))}
         </div>
       </SectionCard>
+      {useLive && liveItems.some((connection) => connection.process_path) && (
+        <SectionCard title={t.network.processLocationsTitle} description={t.network.processLocationsDescription}>
+          <div className="action-grid">
+            {liveItems
+              .filter((connection) => connection.process_path)
+              .slice(0, 4)
+              .map((connection, index) => (
+                <ActionButton
+                  kind="reveal_path"
+                  sourceScreen="network"
+                  target={connection.process_path ?? ""}
+                  targetDisplayName={connection.process_name ?? `${t.network.pid} ${connection.pid ?? index}`}
+                  key={`${connection.process_path}-${connection.pid ?? index}`}
+                  t={t}
+                >
+                  {connection.process_name ?? `${t.network.pid} ${connection.pid ?? t.network.unknown}`}
+                </ActionButton>
+              ))}
+          </div>
+        </SectionCard>
+      )}
       <SectionCard title={t.network.rulesTitle} description={t.network.rulesDescription}>
         <div className="action-grid">
           <ActionButton kind="block_network" sourceScreen="network" target="network-policy-placeholder" targetDisplayName={t.network.rulesTitle} t={t}>

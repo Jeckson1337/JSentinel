@@ -52,7 +52,7 @@ export function ConfirmationDialog({
             {t.actions.cancel}
           </button>
           <button className="primary-button" type="button" onClick={onConfirm}>
-            {t.actions.confirmDryRun}
+            {t.actions.confirmAction}
           </button>
         </div>
       </section>
@@ -66,6 +66,10 @@ export function ActionButton({
   sourceScreen,
   target,
   targetDisplayName,
+  metadataJson = null,
+  disabled = false,
+  disabledReason,
+  onCompleted,
   t,
 }: {
   children: ReactNode;
@@ -73,6 +77,10 @@ export function ActionButton({
   sourceScreen: string;
   target: string;
   targetDisplayName: string;
+  metadataJson?: Record<string, unknown> | null;
+  disabled?: boolean;
+  disabledReason?: string;
+  onCompleted?: () => void;
   t: Dictionary;
 }) {
   const [plan, setPlan] = useState<ActionPlan | null>(null);
@@ -81,9 +89,12 @@ export function ActionButton({
   const [loading, setLoading] = useState(false);
 
   async function handleClick() {
+    if (disabled) {
+      return;
+    }
     setLoading(true);
     setResult(null);
-    const request = createActionRequest(kind, target, targetDisplayName, sourceScreen);
+    const request = createActionRequest(kind, target, targetDisplayName, sourceScreen, metadataJson);
     const nextPlan = await planAction(request);
     setPlan(nextPlan);
     setLoading(false);
@@ -102,13 +113,20 @@ export function ActionButton({
     setResult(nextResult);
     setDialogPlan(null);
     setLoading(false);
+    window.dispatchEvent(new Event("jsentinel-action-history-updated"));
+    onCompleted?.();
   }
 
   return (
     <div className="action-button-stack">
-      <button className="secondary-button" type="button" onClick={handleClick} disabled={loading}>
+      <button className="secondary-button" type="button" onClick={handleClick} disabled={loading || disabled}>
         {loading ? t.common.loading : children}
       </button>
+      {disabled && disabledReason && (
+        <p className="muted-line">
+          {t.actions.disabledReason}: {disabledReason}
+        </p>
+      )}
       {plan?.disabled_reason && (
         <p className="muted-line">
           {t.actions.disabledReason}: {plan.disabled_reason}
@@ -136,13 +154,18 @@ export function ActionHistoryPanel({ t }: { t: Dictionary }) {
 
   useEffect(() => {
     let cancelled = false;
-    loadActionHistory({ limit: 10 }).then((items) => {
-      if (!cancelled) {
-        setHistory(items);
-      }
-    });
+    const refreshHistory = () => {
+      void loadActionHistory({ limit: 10 }).then((items) => {
+        if (!cancelled) {
+          setHistory(items);
+        }
+      });
+    };
+    refreshHistory();
+    window.addEventListener("jsentinel-action-history-updated", refreshHistory);
     return () => {
       cancelled = true;
+      window.removeEventListener("jsentinel-action-history-updated", refreshHistory);
     };
   }, []);
 

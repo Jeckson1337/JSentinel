@@ -1,6 +1,6 @@
 import type { Dictionary, Locale } from "../i18n";
 import { SectionCard, StatusBadge } from "../components/ui";
-import { ActionHistoryPanel } from "../components/actions";
+import { ActionButton, ActionHistoryPanel } from "../components/actions";
 
 type SettingsScreenProps = {
   locale: Locale;
@@ -66,6 +66,38 @@ export function SettingsScreen({
             <StatusBadge label={t.settings.localAuditOnly} tone="info" />
           </div>
           <p className="muted-line">{t.settings.noAutoActions}</p>
+          <div className="action-grid">
+            <ActionButton
+              kind="open_windows_settings"
+              sourceScreen="settings"
+              target="ms-settings:privacy"
+              targetDisplayName={t.settings.privacySettings}
+              metadataJson={{ settings_page: "ms-settings:privacy" }}
+              t={t}
+            >
+              {t.settings.privacySettings}
+            </ActionButton>
+            <ActionButton
+              kind="open_windows_settings"
+              sourceScreen="settings"
+              target="ms-settings:startupapps"
+              targetDisplayName={t.settings.startupAppsSettings}
+              metadataJson={{ settings_page: "ms-settings:startupapps" }}
+              t={t}
+            >
+              {t.settings.startupAppsSettings}
+            </ActionButton>
+            <ActionButton
+              kind="open_windows_settings"
+              sourceScreen="settings"
+              target="ms-settings:network-status"
+              targetDisplayName={t.settings.networkStatusSettings}
+              metadataJson={{ settings_page: "ms-settings:network-status" }}
+              t={t}
+            >
+              {t.settings.networkStatusSettings}
+            </ActionButton>
+          </div>
         </SectionCard>
 
         <SectionCard title={t.actions.historyTitle} description={t.actions.historyDescription}>

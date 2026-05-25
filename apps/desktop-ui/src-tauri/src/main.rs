@@ -1,14 +1,12 @@
 #![forbid(unsafe_code)]
 
 use jsentinel_core::{
-    CapabilityStatus, EventService, FileLockerInfo, NetworkConnectionInfo, ProcessInfo,
-    ReadOnlyQueryResult, StartupEntryInfo,
+    CapabilityStatus, DefaultSafeActionAdapter, EventService, FileLockerInfo,
+    NetworkConnectionInfo, ProcessInfo, ReadOnlyQueryResult, SafeActionExecutor, StartupEntryInfo,
 };
 use jsentinel_db::{DashboardSummary, EventQuery};
 use jsentinel_events::{AccessEvent, EventId};
-use jsentinel_policy::{
-    ActionHistoryQuery, ActionPlan, ActionRequest, ActionResult, ActionStatus, PolicyEngine,
-};
+use jsentinel_policy::{ActionHistoryQuery, ActionPlan, ActionRequest, ActionResult, PolicyEngine};
 use serde::Serialize;
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -129,23 +127,8 @@ fn jsentinel_execute_safe_action(
     state: tauri::State<'_, AppState>,
     request: ActionRequest,
 ) -> Result<ActionResult, String> {
-    let plan = PolicyEngine::plan_action(request);
-    let status = if PolicyEngine::is_action_enabled(plan.request.kind) {
-        ActionStatus::DryRun
-    } else {
-        ActionStatus::Denied
-    };
-    let message = if status == ActionStatus::DryRun {
-        "Package 4A dry-run only. No OS action was executed.".to_string()
-    } else {
-        plan.disabled_reason
-            .clone()
-            .unwrap_or_else(|| "Action is disabled by policy in Package 4A.".to_string())
-    };
-    let mut result = ActionResult::from_plan(&plan, status, message);
-    if status == ActionStatus::Denied {
-        result.error = Some("Denied by Package 4A policy.".to_string());
-    }
+    let executor = SafeActionExecutor::new(DefaultSafeActionAdapter);
+    let result = executor.execute(request);
 
     let service = state
         .event_service

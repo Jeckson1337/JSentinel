@@ -738,4 +738,57 @@ mod tests {
 
         assert_eq!(history.len(), 1);
     }
+
+    #[test]
+    fn action_history_stores_succeeded_denied_and_unsupported_results() {
+        let database =
+            init_db(temp_db_path("action-history-statuses")).expect("database should initialize");
+        for (kind, status, message) in [
+            (
+                ActionKind::RevealPath,
+                ActionStatus::Succeeded,
+                "Opened local path.",
+            ),
+            (
+                ActionKind::KillProcess,
+                ActionStatus::Denied,
+                "Denied by policy.",
+            ),
+            (
+                ActionKind::DetectFileLockers,
+                ActionStatus::Unsupported,
+                "Unsupported in this package.",
+            ),
+        ] {
+            let request = jsentinel_policy::ActionRequest::new(
+                kind,
+                kind.as_str(),
+                kind.as_str(),
+                "tests",
+            );
+            let plan = jsentinel_policy::PolicyEngine::plan_action(request);
+            let result = ActionResult::from_plan(&plan, status, message);
+            database
+                .insert_action_history(&result)
+                .expect("action result insert should work");
+        }
+
+        let history = database
+            .list_action_history(ActionHistoryQuery {
+                kind: None,
+                status: None,
+                text: None,
+                limit: Some(10),
+            })
+            .expect("action history should list");
+
+        assert_eq!(history.len(), 3);
+        assert!(history
+            .iter()
+            .any(|item| item.status == ActionStatus::Succeeded));
+        assert!(history.iter().any(|item| item.status == ActionStatus::Denied));
+        assert!(history
+            .iter()
+            .any(|item| item.status == ActionStatus::Unsupported));
+    }
 }

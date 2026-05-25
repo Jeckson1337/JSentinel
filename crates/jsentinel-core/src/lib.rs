@@ -1,5 +1,13 @@
 #![forbid(unsafe_code)]
 
+pub mod actions;
+
+pub use actions::{
+    allowed_windows_settings_uris, is_allowed_windows_settings_uri, settings_uri_from_request,
+    validate_reveal_path, DefaultSafeActionAdapter, SafeActionAdapter, SafeActionError,
+    SafeActionExecutor, ValidatedRevealPath,
+};
+
 use jsentinel_db::{init_db, DashboardSummary, Database, DbResult, EventQuery};
 use jsentinel_events::{mock_demo_events, AccessEvent, EventId};
 use jsentinel_policy::{ActionHistoryQuery, ActionResult};

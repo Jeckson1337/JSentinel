@@ -139,7 +139,15 @@ export function StartupScreen({ t, refreshToken }: { t: Dictionary; refreshToken
           <ActionButton kind="restore_startup" sourceScreen="startup" target="startup-placeholder" targetDisplayName={t.startup.entriesTitle} t={t}>
             {t.disabledActions.restoreStartup}
           </ActionButton>
-          <ActionButton kind="reveal_path" sourceScreen="startup" target="" targetDisplayName={t.startup.entriesTitle} t={t}>
+          <ActionButton
+            kind="reveal_path"
+            sourceScreen="startup"
+            target={liveItems.find((entry) => entry.path)?.path ?? ""}
+            targetDisplayName={t.startup.entriesTitle}
+            disabled={!liveItems.some((entry) => entry.path)}
+            disabledReason={t.actions.localPathRequired}
+            t={t}
+          >
             {t.disabledActions.openSource}
           </ActionButton>
         </div>

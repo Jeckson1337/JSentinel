@@ -71,6 +71,7 @@ export function createActionRequest(
   target: string,
   targetDisplayName: string,
   sourceScreen: string,
+  metadataJson: Record<string, unknown> | null = null,
 ): ActionRequest {
   return {
     id: `action-${Date.now()}-${Math.round(Math.random() * 100000)}`,
@@ -80,7 +81,7 @@ export function createActionRequest(
     risk_level: classifyActionRisk(kind),
     requested_at: `unix:${Math.floor(Date.now() / 1000)}`,
     source_screen: sourceScreen,
-    metadata_json: null,
+    metadata_json: metadataJson,
   };
 }
 

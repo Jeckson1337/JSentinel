@@ -104,7 +104,15 @@ export function FilesScreen({ t, refreshToken }: { t: Dictionary; refreshToken: 
           />
         </label>
         <div className="action-grid">
-          <ActionButton kind="reveal_path" sourceScreen="files" target={path.trim()} targetDisplayName={path.trim() || t.files.path} t={t}>
+          <ActionButton
+            kind="reveal_path"
+            sourceScreen="files"
+            target={path.trim()}
+            targetDisplayName={path.trim() || t.files.path}
+            disabled={!path.trim()}
+            disabledReason={t.actions.localPathRequired}
+            t={t}
+          >
             {t.disabledActions.revealFile}
           </ActionButton>
           <button

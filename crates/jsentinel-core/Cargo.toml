@@ -16,8 +16,6 @@ jsentinel-db = { path = "../jsentinel-db" }
 jsentinel-events = { path = "../jsentinel-events" }
 jsentinel-policy = { path = "../jsentinel-policy" }
 serde = { version = "1", features = ["derive"] }
-
-[dev-dependencies]
 serde_json = "1"
 
 [lints]

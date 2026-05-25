@@ -14,6 +14,8 @@
 - Plan future actions through a policy layer.
 - Show confirmation dialogs and disabled reasons for actions.
 - Store local action audit records for denied, dry-run, unsupported, or completed action paths.
+- Open existing local filesystem paths in Windows Explorer after confirmation.
+- Open allowlisted Windows Settings pages after confirmation.
 
 ## Cannot Do Yet
 
@@ -31,8 +33,10 @@
 - Modify firewall rules.
 - Write the Windows registry.
 - Install services or daemons.
-- Execute destructive actions from the Package 4A framework.
+- Execute destructive actions from the action framework.
 - Run automatic mitigation in the background.
+- Open arbitrary external URLs from action input.
+- Execute arbitrary shell commands from action input.
 
 ## Will Not Claim
 

@@ -44,7 +44,7 @@ pub fn evaluate_placeholder(risk: ActionRisk) -> PolicyEvaluation {
     PolicyEvaluation {
         risk,
         decision,
-        reason: "Package 4A contains policy planning only; privileged actions are not implemented.",
+        reason: "Package 4B allows only safe non-destructive actions; privileged actions are not implemented.",
     }
 }
 
@@ -352,10 +352,10 @@ impl PolicyEngine {
             ActionKind::RevealPath | ActionKind::OpenWindowsSettings => ActionPlan {
                 confirmation_title: "Confirm safe local action".to_string(),
                 confirmation_message:
-                    "This action is non-destructive and policy-gated. It must not modify the OS."
+                    "This opens a local Windows UI/path only. It does not modify files or settings."
                         .to_string(),
                 request,
-                availability: ActionAvailability::RequiresConfirmation,
+                availability: ActionAvailability::Available,
                 requires_confirmation: true,
                 irreversible: false,
                 can_undo: false,
@@ -364,12 +364,15 @@ impl PolicyEngine {
                     "No files, processes, registry keys, firewall rules, or startup entries are modified."
                         .to_string(),
                 ],
-                warnings: vec!["Package 4A may record a dry-run audit entry only.".to_string()],
+                warnings: vec![
+                    "The action is limited to opening Explorer or an allowlisted Windows Settings page."
+                        .to_string(),
+                ],
             },
             ActionKind::DetectFileLockers => planned_plan(
                 request,
                 ActionAvailability::Unsupported,
-                "File locker detection is planned but not implemented in Package 4A.",
+                "File locker detection is planned but not implemented in Package 4B.",
             ),
             _ => planned_plan(request, ActionAvailability::Planned, FUTURE_ACTION_REASON),
         }
@@ -410,7 +413,7 @@ fn planned_plan(
         irreversible: true,
         can_undo: false,
         disabled_reason: Some(reason.clone()),
-        expected_effects: vec!["No action will be executed in Package 4A.".to_string()],
+        expected_effects: vec!["No action will be executed in Package 4B.".to_string()],
         warnings: vec![reason],
     }
 }
@@ -479,7 +482,7 @@ mod tests {
             ActionRequest::new(ActionKind::RevealPath, "C:\\Demo", "Demo folder", "files");
         let plan = PolicyEngine::plan_action(request);
 
-        assert_eq!(plan.availability, ActionAvailability::RequiresConfirmation);
+        assert_eq!(plan.availability, ActionAvailability::Available);
         assert!(plan.requires_confirmation);
         assert!(!plan.irreversible);
     }
