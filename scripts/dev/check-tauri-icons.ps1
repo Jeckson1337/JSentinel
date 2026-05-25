@@ -57,7 +57,7 @@ if (Test-Path $icoPath) {
             Report-Error "ICONDIRENTRY image byte range points outside icon.ico."
         }
 
-        if ($imageOffset -lt $bytes.Length) {
+        if (($imageOffset + 4) -le $bytes.Length) {
             $isPng = $bytes[$imageOffset] -eq 0x89 `
                 -and $bytes[$imageOffset + 1] -eq 0x50 `
                 -and $bytes[$imageOffset + 2] -eq 0x4E `
@@ -68,6 +68,8 @@ if (Test-Path $icoPath) {
             if (-not ($isPng -or $isDib)) {
                 Report-Error "Embedded ICO image is neither PNG nor a plausible BMP/DIB header."
             }
+        } else {
+            Report-Error "ICONDIRENTRY image offset leaves fewer than 4 bytes for an image header."
         }
     }
 }
