@@ -2,7 +2,16 @@ import { useEffect, useState } from "react";
 import { loadEvents, type AccessEvent } from "../events";
 import type { Dictionary } from "../i18n";
 import { buildNetworkRows } from "../viewModels";
-import { DisabledActionButton, EmptyState, SectionCard, SeverityBadge, StatusBadge } from "../components/ui";
+import {
+  DisabledActionButton,
+  EmptyState,
+  ErrorState,
+  FilterSelect,
+  RefreshBar,
+  SectionCard,
+  SeverityBadge,
+  StatusBadge,
+} from "../components/ui";
 import {
   loadNetworkConnections,
   modeLabel,
@@ -15,27 +24,38 @@ export function NetworkScreen({ t, refreshToken }: { t: Dictionary; refreshToken
   const [events, setEvents] = useState<AccessEvent[]>([]);
   const [connections, setConnections] = useState<ReadOnlyQueryResult<NetworkConnectionInfo> | null>(null);
   const [mode, setMode] = useState<SystemDataMode>("mock_fallback");
+  const [protocolFilter, setProtocolFilter] = useState<"all" | "TCP" | "UDP">("all");
+  const [loading, setLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
+  const [manualRefresh, setManualRefresh] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
-    loadEvents({ kind: "network", severity: null, text: null, limit: 100 }).then((result) => {
+    setLoading(true);
+    Promise.all([
+      loadEvents({ kind: "network", severity: null, text: null, limit: 100 }),
+      loadNetworkConnections(),
+    ]).then(([eventResult, connectionResult]) => {
       if (!cancelled) {
-        setEvents(result.data);
-      }
-    });
-    loadNetworkConnections().then((result) => {
-      if (!cancelled) {
-        setConnections(result.data);
-        setMode(result.mode);
+        setEvents(eventResult.data);
+        setConnections(connectionResult.data);
+        setMode(connectionResult.mode);
+        setWarning(connectionResult.warning ?? null);
+        setLastUpdated(new Date().toLocaleTimeString());
+        setLoading(false);
       }
     });
     return () => {
       cancelled = true;
     };
-  }, [refreshToken]);
+  }, [refreshToken, manualRefresh]);
 
   const rows = buildNetworkRows(events);
-  const useLive = mode === "live_windows" && Boolean(connections?.items.length);
+  const liveItems =
+    connections?.items.filter((connection) => protocolFilter === "all" || connection.protocol === protocolFilter) ?? [];
+  const useLive = (mode === "live_windows" || mode === "partial_support") && Boolean(liveItems.length);
+  const displayCount = useLive ? liveItems.length : rows.length;
 
   return (
     <section className="screen">
@@ -48,7 +68,31 @@ export function NetworkScreen({ t, refreshToken }: { t: Dictionary; refreshToken
         <strong>{modeLabel(mode, t.systemDataModes)}</strong>
         <span>{connections?.capability.limitation ?? t.network.liveDescription}</span>
       </div>
+      <RefreshBar
+        count={displayCount}
+        countLabel={t.system.count}
+        lastUpdated={lastUpdated ? `${t.system.lastRefreshed}: ${lastUpdated}` : null}
+        loading={loading}
+        loadingLabel={t.common.loading}
+        onRefresh={() => setManualRefresh((value) => value + 1)}
+        refreshLabel={t.system.refresh}
+        sourceLabel={modeLabel(mode, t.systemDataModes)}
+        sourceTone={mode === "live_windows" ? "success" : mode === "partial_support" ? "warning" : "neutral"}
+      />
+      {warning && <ErrorState title={t.system.backendWarning} description={warning} />}
       <SectionCard title={t.network.recentConnections} description={t.network.limitations}>
+        <div className="mini-toolbar">
+          <FilterSelect
+            label={t.network.protocol}
+            value={protocolFilter}
+            onChange={(value) => setProtocolFilter(value as "all" | "TCP" | "UDP")}
+            options={[
+              { value: "all", label: t.system.all },
+              { value: "TCP", label: "TCP" },
+              { value: "UDP", label: "UDP" },
+            ]}
+          />
+        </div>
         <div className="data-table">
           <div className="data-row data-row-head">
             <span>{t.network.process}</span>
@@ -59,7 +103,7 @@ export function NetworkScreen({ t, refreshToken }: { t: Dictionary; refreshToken
             <span>{t.network.severity}</span>
           </div>
           {useLive &&
-            connections?.items.map((connection, index) => (
+            liveItems.map((connection, index) => (
               <div className="data-row" key={`${connection.protocol}-${connection.local_addr}-${connection.local_port}-${index}`}>
                 <span>{connection.process_name ?? `${t.network.pid} ${connection.pid ?? t.network.unknown}`}</span>
                 <span>{formatEndpoint(connection.local_addr, connection.local_port)}</span>
@@ -69,8 +113,13 @@ export function NetworkScreen({ t, refreshToken }: { t: Dictionary; refreshToken
                 <StatusBadge label={t.system.readOnly} tone="success" />
               </div>
             ))}
-          {!useLive && rows.length === 0 && <EmptyState title={t.network.noNetworkEvents} />}
-          {!useLive && rows.map((row) => (
+          {(mode === "live_windows" || mode === "partial_support") && !useLive && (
+            <EmptyState title={t.network.noNetworkEvents} description={t.system.emptySnapshot} />
+          )}
+          {mode !== "live_windows" && mode !== "partial_support" && rows.length === 0 && (
+            <EmptyState title={t.network.noNetworkEvents} />
+          )}
+          {mode !== "live_windows" && mode !== "partial_support" && rows.map((row) => (
             <div className="data-row" key={`${row.target}-${row.timestamp}`}>
               <span>{row.processName}</span>
               <span>{t.network.unknown}</span>

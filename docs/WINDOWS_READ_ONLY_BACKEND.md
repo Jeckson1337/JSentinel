@@ -30,10 +30,30 @@ Every read-only result includes:
 - provider;
 - capability id and label;
 - supported/unsupported status;
+- partial/best-effort status where visibility is incomplete;
 - whether admin is expected;
+- data source;
+- `read_only = true`;
 - limitation message when data is unavailable or partial.
 
 The backend should not silently pretend that unsupported data is available.
+
+## Error Model
+
+Read-only commands return structured diagnostics instead of panicking. Errors are serialized with one of these categories:
+
+- unsupported platform;
+- permission denied;
+- unavailable;
+- parse error;
+- OS error;
+- unknown.
+
+The UI may show fallback data, but it must label fallback data as mock/demo and must not present it as live system state.
+
+## Refresh Model
+
+Refresh controls repeat the same read-only snapshot queries. Refresh does not modify the OS, does not start real-time monitoring, does not export logs, and does not upload data.
 
 ## What Is Not Implemented
 

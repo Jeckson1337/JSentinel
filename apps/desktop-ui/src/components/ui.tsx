@@ -4,6 +4,8 @@ import type { EventKind, EventSeverity, EventSource } from "../events";
 
 type Tone = "neutral" | "info" | "warning" | "critical" | "success";
 
+export type BadgeTone = Tone;
+
 export function StatusBadge({ label, tone = "neutral" }: { label: string; tone?: Tone }) {
   return <span className={`badge badge-${tone}`}>{label}</span>;
 }
@@ -78,6 +80,41 @@ export function ErrorState({ title, description }: { title: string; description?
     <div className="state-panel state-error">
       <strong>{title}</strong>
       {description && <p>{description}</p>}
+    </div>
+  );
+}
+
+export function RefreshBar({
+  count,
+  countLabel,
+  lastUpdated,
+  loading,
+  loadingLabel,
+  onRefresh,
+  refreshLabel,
+  sourceLabel,
+  sourceTone = "neutral",
+}: {
+  count?: number;
+  countLabel: string;
+  lastUpdated?: string | null;
+  loading: boolean;
+  loadingLabel: string;
+  onRefresh: () => void;
+  refreshLabel: string;
+  sourceLabel: string;
+  sourceTone?: Tone;
+}) {
+  return (
+    <div className="refresh-bar">
+      <div className="badge-list">
+        <StatusBadge label={`${countLabel}: ${count ?? 0}`} />
+        <StatusBadge label={sourceLabel} tone={sourceTone} />
+        {lastUpdated && <StatusBadge label={lastUpdated} tone="info" />}
+      </div>
+      <button className="secondary-button" type="button" onClick={onRefresh} disabled={loading}>
+        {loading ? loadingLabel : refreshLabel}
+      </button>
     </div>
   );
 }

@@ -45,6 +45,8 @@ The UI tries live Windows data first and then falls back to mock/event-backed vi
 
 Package 3 still does not implement process kill, firewall changes, registry writes, startup disable/restore, quarantine, delete-on-reboot, force unlock, real-time file watching, device monitoring, telemetry, analytics, ad SDKs, or runtime external network calls.
 
+Package 3.5 hardens this layer with structured capability status, serialized read-only backend errors, manual refresh controls, local diagnostic counts, and clearer live/partial/unsupported/mock UI states. Refresh remains read-only snapshot collection.
+
 ## Privilege Model
 
 The UI must not execute privileged actions directly. Future privileged operations should flow through:

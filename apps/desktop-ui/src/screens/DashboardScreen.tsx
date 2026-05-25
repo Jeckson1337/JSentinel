@@ -8,12 +8,20 @@ import {
   type DashboardSummary,
 } from "../events";
 import type { Dictionary } from "../i18n";
-import { loadSystemCapabilities, modeLabel, type CapabilityStatus, type SystemDataMode } from "../system";
+import {
+  loadReadOnlyDiagnostics,
+  loadSystemCapabilities,
+  modeLabel,
+  type CapabilityStatus,
+  type ReadOnlyDiagnostics,
+  type SystemDataMode,
+} from "../system";
 import type { ScreenId } from "../types";
 import {
   EmptyState,
   EventKindBadge,
   MetricCard,
+  RefreshBar,
   SectionCard,
   SeverityBadge,
   SourceBadge,
@@ -32,28 +40,37 @@ export function DashboardScreen({ t, refreshToken, onNavigate }: DashboardScreen
   const [dataSource, setDataSource] = useState<"tauri_sqlite" | "frontend_mock">("frontend_mock");
   const [capabilities, setCapabilities] = useState<CapabilityStatus[]>([]);
   const [backendMode, setBackendMode] = useState<SystemDataMode>("unsupported_platform");
+  const [diagnostics, setDiagnostics] = useState<ReadOnlyDiagnostics | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [manualRefresh, setManualRefresh] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
 
     Promise.all([
       loadDashboardSummary(),
       loadEvents({ kind: null, severity: null, text: null, limit: 5 }),
       loadSystemCapabilities(),
-    ]).then(([summaryResult, eventsResult, capabilityResult]) => {
+      loadReadOnlyDiagnostics(),
+    ]).then(([summaryResult, eventsResult, capabilityResult, diagnosticsResult]) => {
       if (!cancelled) {
         setSummary(summaryResult.data);
         setEvents(eventsResult.data);
         setDataSource(summaryResult.source);
         setCapabilities(capabilityResult.data);
-        setBackendMode(capabilityResult.mode);
+        setBackendMode(diagnosticsResult.mode === "mock_fallback" ? capabilityResult.mode : diagnosticsResult.mode);
+        setDiagnostics(diagnosticsResult.data);
+        setLastUpdated(new Date().toLocaleTimeString());
+        setLoading(false);
       }
     });
 
     return () => {
       cancelled = true;
     };
-  }, [refreshToken]);
+  }, [refreshToken, manualRefresh]);
 
   const cards = summary
     ? [
@@ -84,6 +101,18 @@ export function DashboardScreen({ t, refreshToken, onNavigate }: DashboardScreen
         <strong>{t.dashboardSummary.mockNoticeTitle}</strong>
         <span>{t.dashboardSummary.mockNoticeBody}</span>
       </div>
+
+      <RefreshBar
+        count={capabilities.length}
+        countLabel={t.system.capabilities}
+        lastUpdated={lastUpdated ? `${t.system.lastRefreshed}: ${lastUpdated}` : null}
+        loading={loading}
+        loadingLabel={t.common.loading}
+        onRefresh={() => setManualRefresh((value) => value + 1)}
+        refreshLabel={t.system.refresh}
+        sourceLabel={modeLabel(backendMode, t.systemDataModes)}
+        sourceTone={backendMode === "live_windows" ? "success" : backendMode === "partial_support" ? "warning" : "neutral"}
+      />
 
       <div className="metric-grid">
         {cards.map((card) => (
@@ -141,13 +170,36 @@ export function DashboardScreen({ t, refreshToken, onNavigate }: DashboardScreen
               {capabilities.slice(0, 4).map((capability) => (
                 <div className="capability-row" key={capability.id}>
                   <span>{capability.label}</span>
+                  <span>{capability.data_source}</span>
                   <StatusBadge
-                    label={capability.supported ? t.system.supported : t.system.unsupported}
-                    tone={capability.supported ? "success" : "neutral"}
+                    label={t.capabilityStatus[capability.status]}
+                    tone={capability.status === "supported" ? "success" : capability.status === "partial" ? "warning" : "neutral"}
                   />
                 </div>
               ))}
             </div>
+            <p className="muted-line">{t.dashboard.notRealTime}</p>
+          </SectionCard>
+
+          <SectionCard title={t.dashboard.diagnostics} description={t.dashboard.diagnosticsDescription}>
+            <dl className="details-list">
+              <div>
+                <dt>{t.dashboard.platform}</dt>
+                <dd>{diagnostics?.platform ?? "unknown"}</dd>
+              </div>
+              <div>
+                <dt>{t.dashboard.processCount}</dt>
+                <dd>{diagnostics?.process_count ?? 0}</dd>
+              </div>
+              <div>
+                <dt>{t.dashboard.networkCount}</dt>
+                <dd>{diagnostics?.network_connection_count ?? 0}</dd>
+              </div>
+              <div>
+                <dt>{t.dashboard.startupCount}</dt>
+                <dd>{diagnostics?.startup_entry_count ?? 0}</dd>
+              </div>
+            </dl>
           </SectionCard>
 
           <SectionCard title={t.dashboard.quickActions} description={t.dashboard.quickActionsDescription}>

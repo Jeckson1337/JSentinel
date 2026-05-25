@@ -5,7 +5,9 @@ import { buildFileRows } from "../viewModels";
 import {
   DisabledActionButton,
   EmptyState,
+  ErrorState,
   EventKindBadge,
+  RefreshBar,
   SectionCard,
   SeverityBadge,
   StatusBadge,
@@ -23,18 +25,25 @@ export function FilesScreen({ t, refreshToken }: { t: Dictionary; refreshToken: 
   const [path, setPath] = useState("");
   const [lockerResult, setLockerResult] = useState<ReadOnlyQueryResult<FileLockerInfo> | null>(null);
   const [lockerMode, setLockerMode] = useState<SystemDataMode>("unsupported_platform");
+  const [loading, setLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
+  const [manualRefresh, setManualRefresh] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
     loadEvents({ kind: null, severity: null, text: null, limit: 100 }).then((result) => {
       if (!cancelled) {
         setEvents(result.data);
+        setLastUpdated(new Date().toLocaleTimeString());
+        setLoading(false);
       }
     });
     return () => {
       cancelled = true;
     };
-  }, [refreshToken]);
+  }, [refreshToken, manualRefresh]);
 
   const rows = buildFileRows(events);
 
@@ -42,6 +51,7 @@ export function FilesScreen({ t, refreshToken }: { t: Dictionary; refreshToken: 
     const result = await detectFileLockers(path.trim());
     setLockerResult(result.data);
     setLockerMode(result.mode);
+    setWarning(result.warning ?? result.data.error?.message ?? null);
   }
 
   return (
@@ -51,6 +61,17 @@ export function FilesScreen({ t, refreshToken }: { t: Dictionary; refreshToken: 
         <h1>{t.files.title}</h1>
         <p>{t.files.subtitle}</p>
       </div>
+      <RefreshBar
+        count={rows.length}
+        countLabel={t.system.count}
+        lastUpdated={lastUpdated ? `${t.system.lastRefreshed}: ${lastUpdated}` : null}
+        loading={loading}
+        loadingLabel={t.common.loading}
+        onRefresh={() => setManualRefresh((value) => value + 1)}
+        refreshLabel={t.system.refresh}
+        sourceLabel={t.system.mockEventData}
+        sourceTone="warning"
+      />
       <SectionCard title={t.files.activityTitle} description={t.files.limitations}>
         <div className="data-table">
           <div className="data-row data-row-head">
@@ -95,6 +116,7 @@ export function FilesScreen({ t, refreshToken }: { t: Dictionary; refreshToken: 
           <DisabledActionButton>{t.disabledActions.quarantine}</DisabledActionButton>
           <DisabledActionButton>{t.disabledActions.deleteOnReboot}</DisabledActionButton>
         </div>
+        {warning && <ErrorState title={t.system.backendWarning} description={warning} />}
         {lockerResult && (
           <div className="detail-panel">
             <div className="badge-list">

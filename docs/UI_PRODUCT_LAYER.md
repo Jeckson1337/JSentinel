@@ -22,8 +22,11 @@ The UI reads events through existing Tauri commands when available. In browser/V
 For Windows read-only data, screens show one of three modes:
 
 - Live Windows data.
+- Partial support.
 - Demo/mock fallback.
 - Unsupported platform.
+
+Package 3.5 adds refresh controls, last-refreshed timestamps, local diagnostic counts, and clearer backend warning states. Refresh only repeats read-only snapshot queries.
 
 ## Disabled Actions
 

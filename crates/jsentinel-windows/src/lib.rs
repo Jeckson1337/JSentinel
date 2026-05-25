@@ -1,8 +1,8 @@
 #![forbid(unsafe_code)]
 
 use jsentinel_core::{
-    CapabilityStatus, FileLockerInfo, NetworkConnectionInfo, ProcessInfo, ReadOnlyQueryResult,
-    StartupEntryInfo, SystemPlatform,
+    CapabilityStatus, FileLockerInfo, NetworkConnectionInfo, ProcessInfo, ReadOnlyBackendError,
+    ReadOnlyBackendErrorKind, ReadOnlyQueryResult, StartupEntryInfo, SystemPlatform,
 };
 use serde::Deserialize;
 
@@ -44,40 +44,51 @@ pub fn system_capabilities() -> Vec<CapabilityStatus> {
     }
 
     vec![
-        CapabilityStatus::supported("process_inventory", "Process inventory"),
-        CapabilityStatus::supported("process_details", "Process details"),
-        CapabilityStatus::supported("network_connections", "Network connections"),
-        CapabilityStatus {
-            id: "startup_entries".to_string(),
-            label: "Startup entries".to_string(),
-            supported: true,
-            requires_admin: false,
-            limitation: Some(
-                "Registry Run keys and Startup folders are read best-effort; scheduled tasks are not parsed yet."
-                    .to_string(),
-            ),
-        },
+        CapabilityStatus::partial(
+            "process_inventory",
+            "Process inventory",
+            "Executable path, command line, owner, and start time are best-effort and may be unavailable.",
+        )
+        .with_data_source("Win32_Process")
+        .admin_may_improve_results(),
+        CapabilityStatus::partial(
+            "process_details",
+            "Process details",
+            "Process details are derived from the read-only process snapshot and may omit protected fields.",
+        )
+        .with_data_source("Win32_Process")
+        .admin_may_improve_results(),
+        CapabilityStatus::partial(
+            "network_connections",
+            "Network connections",
+            "TCP/UDP data is a point-in-time snapshot. Process mapping is best-effort.",
+        )
+        .with_data_source("Get-NetTCPConnection/Get-NetUDPEndpoint"),
+        CapabilityStatus::partial(
+            "startup_entries",
+            "Startup entries",
+            "Registry Run keys and Startup folders are read best-effort; scheduled tasks are not parsed yet.",
+        )
+        .with_data_source("Registry Run keys and Startup folders"),
         CapabilityStatus::unsupported(
             "file_lockers",
             "File locker detection",
             "Restart Manager based locker detection is planned; no handles are inspected or closed in this package.",
-        ),
+        )
+        .with_data_source("not_implemented"),
     ]
 }
 
 pub fn list_processes() -> ReadOnlyQueryResult<ProcessInfo> {
     #[cfg(windows)]
     {
-        let capability = CapabilityStatus {
-            id: "process_inventory".to_string(),
-            label: "Process inventory".to_string(),
-            supported: true,
-            requires_admin: false,
-            limitation: Some(
-                "Executable path, command line, owner, and start time are best-effort and may be unavailable."
-                    .to_string(),
-            ),
-        };
+        let capability = CapabilityStatus::partial(
+            "process_inventory",
+            "Process inventory",
+            "Executable path, command line, owner, and start time are best-effort and may be unavailable.",
+        )
+        .with_data_source("Win32_Process")
+        .admin_may_improve_results();
 
         match powershell_json(PROCESS_QUERY) {
             Ok(value) => ReadOnlyQueryResult {
@@ -85,6 +96,7 @@ pub fn list_processes() -> ReadOnlyQueryResult<ProcessInfo> {
                 provider: PROVIDER_NAME.to_string(),
                 capability,
                 items: parse_processes(&value),
+                error: None,
             },
             Err(error) => query_error(
                 "process_inventory",
@@ -135,16 +147,12 @@ pub fn get_process_details(pid: u32) -> ReadOnlyQueryResult<ProcessInfo> {
 pub fn list_network_connections() -> ReadOnlyQueryResult<NetworkConnectionInfo> {
     #[cfg(windows)]
     {
-        let capability = CapabilityStatus {
-            id: "network_connections".to_string(),
-            label: "Network connections".to_string(),
-            supported: true,
-            requires_admin: false,
-            limitation: Some(
-                "Connection data is a point-in-time read-only snapshot. Process mapping is best-effort."
-                    .to_string(),
-            ),
-        };
+        let capability = CapabilityStatus::partial(
+            "network_connections",
+            "Network connections",
+            "Connection data is a point-in-time read-only snapshot. Process mapping is best-effort.",
+        )
+        .with_data_source("Get-NetTCPConnection/Get-NetUDPEndpoint");
         let processes = list_processes().items;
 
         match powershell_json(NETWORK_QUERY) {
@@ -153,6 +161,7 @@ pub fn list_network_connections() -> ReadOnlyQueryResult<NetworkConnectionInfo> 
                 provider: PROVIDER_NAME.to_string(),
                 capability,
                 items: parse_network_connections(&value, &processes),
+                error: None,
             },
             Err(error) => query_error(
                 "network_connections",
@@ -176,16 +185,12 @@ pub fn list_network_connections() -> ReadOnlyQueryResult<NetworkConnectionInfo> 
 pub fn list_startup_entries() -> ReadOnlyQueryResult<StartupEntryInfo> {
     #[cfg(windows)]
     {
-        let capability = CapabilityStatus {
-            id: "startup_entries".to_string(),
-            label: "Startup entries".to_string(),
-            supported: true,
-            requires_admin: false,
-            limitation: Some(
-                "Registry Run keys and Startup folders are read-only best-effort; scheduled tasks are not parsed yet."
-                    .to_string(),
-            ),
-        };
+        let capability = CapabilityStatus::partial(
+            "startup_entries",
+            "Startup entries",
+            "Registry Run keys and Startup folders are read-only best-effort; scheduled tasks are not parsed yet.",
+        )
+        .with_data_source("Registry Run keys and Startup folders");
 
         match powershell_json(STARTUP_QUERY) {
             Ok(value) => ReadOnlyQueryResult {
@@ -193,6 +198,7 @@ pub fn list_startup_entries() -> ReadOnlyQueryResult<StartupEntryInfo> {
                 provider: PROVIDER_NAME.to_string(),
                 capability,
                 items: parse_startup_entries(&value),
+                error: None,
             },
             Err(error) => query_error(
                 "startup_entries",
@@ -238,6 +244,7 @@ pub fn detect_file_lockers(path: impl AsRef<str>) -> ReadOnlyQueryResult<FileLoc
                     .to_string(),
             ),
         }],
+        error: None,
     }
 }
 
@@ -347,6 +354,7 @@ fn query_error<T>(
     capability_label: impl Into<String>,
     limitation: impl Into<String>,
 ) -> ReadOnlyQueryResult<T> {
+    let limitation = limitation.into();
     ReadOnlyQueryResult {
         platform: if cfg!(windows) {
             SystemPlatform::Windows
@@ -354,15 +362,32 @@ fn query_error<T>(
             SystemPlatform::Unsupported
         },
         provider: PROVIDER_NAME.to_string(),
-        capability: CapabilityStatus {
-            id: capability_id.into(),
-            label: capability_label.into(),
-            supported: false,
-            requires_admin: false,
-            limitation: Some(limitation.into()),
-        },
+        capability: CapabilityStatus::unsupported(
+            capability_id,
+            capability_label,
+            limitation.clone(),
+        )
+        .with_data_source("local_os_snapshot"),
         items: Vec::new(),
+        error: Some(classify_backend_error(&limitation)),
     }
+}
+
+fn classify_backend_error(message: &str) -> ReadOnlyBackendError {
+    let lowered = message.to_lowercase();
+    let kind = if lowered.contains("access is denied") || lowered.contains("permission") {
+        ReadOnlyBackendErrorKind::PermissionDenied
+    } else if lowered.contains("not recognized") || lowered.contains("not found") {
+        ReadOnlyBackendErrorKind::Unavailable
+    } else if lowered.contains("json") || lowered.contains("expected") {
+        ReadOnlyBackendErrorKind::ParseError
+    } else if lowered.is_empty() {
+        ReadOnlyBackendErrorKind::Unknown
+    } else {
+        ReadOnlyBackendErrorKind::OsError
+    };
+
+    ReadOnlyBackendError::new(kind, message)
 }
 
 fn parse_json_array(value: &serde_json::Value) -> Vec<serde_json::Value> {
@@ -489,7 +514,11 @@ struct RawStartupEntry {
 
 #[cfg(test)]
 mod tests {
-    use super::{detect_file_lockers, parse_network_connections, parse_processes, parse_startup_entries};
+    use super::{
+        classify_backend_error, detect_file_lockers, parse_network_connections, parse_processes,
+        parse_startup_entries, system_capabilities,
+    };
+    use jsentinel_core::{CapabilitySupportStatus, ReadOnlyBackendErrorKind};
     use serde_json::json;
 
     #[test]
@@ -558,7 +587,37 @@ mod tests {
         let result = detect_file_lockers("C:\\Demo\\locked.txt");
 
         assert!(!result.capability.supported);
+        assert_eq!(result.capability.status, CapabilitySupportStatus::Unsupported);
+        assert!(result.capability.read_only);
         assert_eq!(result.items.len(), 1);
         assert_eq!(result.items[0].confidence, "unsupported");
+    }
+
+    #[test]
+    fn capabilities_include_read_only_metadata() {
+        let capabilities = system_capabilities();
+
+        assert!(capabilities.iter().all(|capability| capability.read_only));
+        assert!(capabilities.iter().all(|capability| !capability.data_source.is_empty()));
+    }
+
+    #[test]
+    fn classifies_permission_denied_error() {
+        let error = classify_backend_error("Access is denied");
+
+        assert_eq!(error.kind, ReadOnlyBackendErrorKind::PermissionDenied);
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn non_windows_process_inventory_is_unsupported() {
+        let result = super::list_processes();
+
+        assert!(!result.capability.supported);
+        assert_eq!(result.capability.status, CapabilitySupportStatus::Unsupported);
+        assert_eq!(
+            result.error.as_ref().map(|error| error.kind),
+            Some(ReadOnlyBackendErrorKind::UnsupportedPlatform)
+        );
     }
 }

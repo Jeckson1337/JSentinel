@@ -86,10 +86,44 @@ pub struct ProviderCapability {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+pub enum CapabilitySupportStatus {
+    Supported,
+    Partial,
+    Unsupported,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum SystemPlatform {
     Windows,
     Linux,
     Unsupported,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ReadOnlyBackendErrorKind {
+    UnsupportedPlatform,
+    PermissionDenied,
+    Unavailable,
+    ParseError,
+    OsError,
+    Unknown,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReadOnlyBackendError {
+    pub kind: ReadOnlyBackendErrorKind,
+    pub message: String,
+}
+
+impl ReadOnlyBackendError {
+    pub fn new(kind: ReadOnlyBackendErrorKind, message: impl Into<String>) -> Self {
+        Self {
+            kind,
+            message: message.into(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -97,7 +131,10 @@ pub struct CapabilityStatus {
     pub id: String,
     pub label: String,
     pub supported: bool,
+    pub status: CapabilitySupportStatus,
     pub requires_admin: bool,
+    pub data_source: String,
+    pub read_only: bool,
     pub limitation: Option<String>,
 }
 
@@ -107,9 +144,49 @@ impl CapabilityStatus {
             id: id.into(),
             label: label.into(),
             supported: true,
+            status: CapabilitySupportStatus::Supported,
             requires_admin: false,
+            data_source: "local_os_snapshot".to_string(),
+            read_only: true,
             limitation: None,
         }
+    }
+
+    pub fn partial(
+        id: impl Into<String>,
+        label: impl Into<String>,
+        limitation: impl Into<String>,
+    ) -> Self {
+        Self {
+            id: id.into(),
+            label: label.into(),
+            supported: true,
+            status: CapabilitySupportStatus::Partial,
+            requires_admin: false,
+            data_source: "local_os_snapshot".to_string(),
+            read_only: true,
+            limitation: Some(limitation.into()),
+        }
+    }
+
+    pub fn with_data_source(mut self, data_source: impl Into<String>) -> Self {
+        self.data_source = data_source.into();
+        self
+    }
+
+    pub fn with_limitation(mut self, limitation: impl Into<String>) -> Self {
+        self.limitation = Some(limitation.into());
+        self
+    }
+
+    pub fn admin_may_improve_results(mut self) -> Self {
+        self.limitation = Some(match self.limitation {
+            Some(existing) => format!(
+                "{existing} Admin rights may improve visibility for protected data."
+            ),
+            None => "Admin rights may improve visibility for protected data.".to_string(),
+        });
+        self
     }
 
     pub fn unsupported(
@@ -121,7 +198,10 @@ impl CapabilityStatus {
             id: id.into(),
             label: label.into(),
             supported: false,
+            status: CapabilitySupportStatus::Unsupported,
             requires_admin: false,
+            data_source: "not_available".to_string(),
+            read_only: true,
             limitation: Some(limitation.into()),
         }
     }
@@ -133,6 +213,7 @@ pub struct ReadOnlyQueryResult<T> {
     pub provider: String,
     pub capability: CapabilityStatus,
     pub items: Vec<T>,
+    pub error: Option<ReadOnlyBackendError>,
 }
 
 impl<T> ReadOnlyQueryResult<T> {
@@ -147,6 +228,10 @@ impl<T> ReadOnlyQueryResult<T> {
             provider: provider.into(),
             capability: CapabilityStatus::unsupported(capability_id, capability_label, limitation),
             items: Vec::new(),
+            error: Some(ReadOnlyBackendError::new(
+                ReadOnlyBackendErrorKind::UnsupportedPlatform,
+                "This read-only backend is unsupported on the current platform.",
+            )),
         }
     }
 }
@@ -286,6 +371,7 @@ impl ReadOnlySystemProvider for MockSystemProvider {
                 confidence: "unsupported".to_string(),
                 limitation: Some("No handle inspection was performed.".to_string()),
             }],
+            error: None,
         }
     }
 
@@ -297,7 +383,8 @@ impl ReadOnlySystemProvider for MockSystemProvider {
 #[cfg(test)]
 mod tests {
     use super::{
-        CapabilityStatus, MockSystemProvider, ProcessInfo, ReadOnlySystemProvider, SystemPlatform,
+        CapabilityStatus, CapabilitySupportStatus, MockSystemProvider, ProcessInfo,
+        ReadOnlyBackendError, ReadOnlyBackendErrorKind, ReadOnlySystemProvider, SystemPlatform,
     };
 
     #[test]
@@ -307,6 +394,35 @@ mod tests {
 
         assert!(json.contains("process_inventory"));
         assert!(json.contains("\"supported\":true"));
+        assert!(json.contains("\"status\":\"supported\""));
+        assert!(json.contains("\"read_only\":true"));
+    }
+
+    #[test]
+    fn partial_capability_status_serializes() {
+        let capability = CapabilityStatus::partial(
+            "startup_entries",
+            "Startup entries",
+            "Scheduled tasks are not parsed yet.",
+        );
+        let json = serde_json::to_string(&capability).expect("capability should serialize");
+        let restored: CapabilityStatus =
+            serde_json::from_str(&json).expect("capability should deserialize");
+
+        assert_eq!(restored.status, CapabilitySupportStatus::Partial);
+        assert!(restored.supported);
+        assert!(restored.read_only);
+    }
+
+    #[test]
+    fn read_only_backend_error_serializes() {
+        let error = ReadOnlyBackendError::new(
+            ReadOnlyBackendErrorKind::PermissionDenied,
+            "Some fields are unavailable.",
+        );
+        let json = serde_json::to_string(&error).expect("error should serialize");
+
+        assert!(json.contains("permission_denied"));
     }
 
     #[test]

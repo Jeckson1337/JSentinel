@@ -329,6 +329,23 @@ p,
   grid-template-columns: minmax(230px, 1.4fr) repeat(3, minmax(150px, 0.8fr)) auto;
 }
 
+.refresh-bar {
+  align-items: center;
+  background: #101614;
+  border: 1px solid #26342e;
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin: 0 0 16px;
+  padding: 12px;
+}
+
+.mini-toolbar {
+  margin: 0 0 14px;
+  max-width: 260px;
+}
+
 .control-field {
   display: grid;
   gap: 6px;
@@ -581,7 +598,8 @@ button:disabled {
 
   .top-bar,
   .sponsor-banner,
-  .notice-strip {
+  .notice-strip,
+  .refresh-bar {
     align-items: flex-start;
     flex-direction: column;
   }

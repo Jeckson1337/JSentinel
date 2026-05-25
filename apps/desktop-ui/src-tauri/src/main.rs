@@ -6,11 +6,22 @@ use jsentinel_core::{
 };
 use jsentinel_db::{DashboardSummary, EventQuery};
 use jsentinel_events::{AccessEvent, EventId};
+use serde::Serialize;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
 struct AppState {
     event_service: Mutex<EventService>,
+}
+
+#[derive(Debug, Serialize)]
+struct ReadOnlyDiagnostics {
+    app_version: &'static str,
+    platform: &'static str,
+    capabilities: Vec<CapabilityStatus>,
+    process_count: usize,
+    network_connection_count: usize,
+    startup_entry_count: usize,
 }
 
 #[tauri::command]
@@ -89,6 +100,22 @@ fn jsentinel_detect_file_lockers(path: String) -> ReadOnlyQueryResult<FileLocker
     jsentinel_windows::detect_file_lockers(path)
 }
 
+#[tauri::command]
+fn jsentinel_get_read_only_diagnostics() -> ReadOnlyDiagnostics {
+    let processes = jsentinel_windows::list_processes();
+    let network_connections = jsentinel_windows::list_network_connections();
+    let startup_entries = jsentinel_windows::list_startup_entries();
+
+    ReadOnlyDiagnostics {
+        app_version: env!("CARGO_PKG_VERSION"),
+        platform: std::env::consts::OS,
+        capabilities: jsentinel_windows::system_capabilities(),
+        process_count: processes.items.len(),
+        network_connection_count: network_connections.items.len(),
+        startup_entry_count: startup_entries.items.len(),
+    }
+}
+
 fn main() {
     let database_path = dev_database_path();
     let event_service = EventService::initialize_storage(database_path)
@@ -108,7 +135,8 @@ fn main() {
             jsentinel_get_process_details,
             jsentinel_list_network_connections,
             jsentinel_list_startup_entries,
-            jsentinel_detect_file_lockers
+            jsentinel_detect_file_lockers,
+            jsentinel_get_read_only_diagnostics
         ])
         .run(tauri::generate_context!())
         .expect("failed to run JSentinel desktop UI");

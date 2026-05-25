@@ -9,6 +9,8 @@
 - Store and display local/mock audit-style events.
 - On Windows, query read-only process, network, and startup snapshots best-effort.
 - Show explicit live/fallback/unsupported status in UI.
+- Refresh read-only snapshots manually.
+- Show local read-only diagnostic counts without upload.
 
 ## Cannot Do Yet
 
@@ -16,6 +18,8 @@
 - Guarantee complete process, network, startup, or file visibility.
 - Parse scheduled tasks in the Windows startup backend.
 - Detect file lockers with Restart Manager.
+- Force-unlock files.
+- Export or upload private diagnostic dumps automatically.
 - Quarantine files.
 - Restore files.
 - Delete files.

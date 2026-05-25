@@ -2,7 +2,16 @@ import { useEffect, useState } from "react";
 import { loadEvents, type AccessEvent } from "../events";
 import type { Dictionary } from "../i18n";
 import { buildStartupRows } from "../viewModels";
-import { DisabledActionButton, EmptyState, SectionCard, SeverityBadge, StatusBadge } from "../components/ui";
+import {
+  DisabledActionButton,
+  EmptyState,
+  ErrorState,
+  FilterSelect,
+  RefreshBar,
+  SectionCard,
+  SeverityBadge,
+  StatusBadge,
+} from "../components/ui";
 import {
   loadStartupEntries,
   modeLabel,
@@ -15,27 +24,39 @@ export function StartupScreen({ t, refreshToken }: { t: Dictionary; refreshToken
   const [events, setEvents] = useState<AccessEvent[]>([]);
   const [entries, setEntries] = useState<ReadOnlyQueryResult<StartupEntryInfo> | null>(null);
   const [mode, setMode] = useState<SystemDataMode>("mock_fallback");
+  const [sourceFilter, setSourceFilter] = useState("all");
+  const [loading, setLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
+  const [manualRefresh, setManualRefresh] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
-    loadEvents({ kind: "startup", severity: null, text: null, limit: 100 }).then((result) => {
+    setLoading(true);
+    Promise.all([
+      loadEvents({ kind: "startup", severity: null, text: null, limit: 100 }),
+      loadStartupEntries(),
+    ]).then(([eventResult, entryResult]) => {
       if (!cancelled) {
-        setEvents(result.data);
-      }
-    });
-    loadStartupEntries().then((result) => {
-      if (!cancelled) {
-        setEntries(result.data);
-        setMode(result.mode);
+        setEvents(eventResult.data);
+        setEntries(entryResult.data);
+        setMode(entryResult.mode);
+        setWarning(entryResult.warning ?? null);
+        setLastUpdated(new Date().toLocaleTimeString());
+        setLoading(false);
       }
     });
     return () => {
       cancelled = true;
     };
-  }, [refreshToken]);
+  }, [refreshToken, manualRefresh]);
 
   const rows = buildStartupRows(events);
-  const useLive = mode === "live_windows" && Boolean(entries?.items.length);
+  const sourceOptions = Array.from(new Set(entries?.items.map((entry) => entry.source) ?? []));
+  const liveItems =
+    entries?.items.filter((entry) => sourceFilter === "all" || entry.source === sourceFilter) ?? [];
+  const useLive = (mode === "live_windows" || mode === "partial_support") && Boolean(liveItems.length);
+  const displayCount = useLive ? liveItems.length : rows.length;
 
   return (
     <section className="screen">
@@ -48,7 +69,30 @@ export function StartupScreen({ t, refreshToken }: { t: Dictionary; refreshToken
         <strong>{modeLabel(mode, t.systemDataModes)}</strong>
         <span>{entries?.capability.limitation ?? t.startup.liveDescription}</span>
       </div>
+      <RefreshBar
+        count={displayCount}
+        countLabel={t.system.count}
+        lastUpdated={lastUpdated ? `${t.system.lastRefreshed}: ${lastUpdated}` : null}
+        loading={loading}
+        loadingLabel={t.common.loading}
+        onRefresh={() => setManualRefresh((value) => value + 1)}
+        refreshLabel={t.system.refresh}
+        sourceLabel={modeLabel(mode, t.systemDataModes)}
+        sourceTone={mode === "live_windows" ? "success" : mode === "partial_support" ? "warning" : "neutral"}
+      />
+      {warning && <ErrorState title={t.system.backendWarning} description={warning} />}
       <SectionCard title={t.startup.entriesTitle} description={t.startup.limitations}>
+        <div className="mini-toolbar">
+          <FilterSelect
+            label={t.startup.source}
+            value={sourceFilter}
+            onChange={setSourceFilter}
+            options={[
+              { value: "all", label: t.system.all },
+              ...sourceOptions.map((source) => ({ value: source, label: source })),
+            ]}
+          />
+        </div>
         <div className="data-table">
           <div className="data-row data-row-head">
             <span>{t.startup.name}</span>
@@ -58,7 +102,7 @@ export function StartupScreen({ t, refreshToken }: { t: Dictionary; refreshToken
             <span>{useLive ? t.startup.risk : t.startup.severity}</span>
           </div>
           {useLive &&
-            entries?.items.map((entry) => (
+            liveItems.map((entry) => (
               <div className="data-row" key={entry.id}>
                 <span>{entry.name}</span>
                 <span>{entry.source}</span>
@@ -70,8 +114,13 @@ export function StartupScreen({ t, refreshToken }: { t: Dictionary; refreshToken
                 <StatusBadge label={entry.risk ?? t.startup.unknownRisk} />
               </div>
             ))}
-          {!useLive && rows.length === 0 && <EmptyState title={t.startup.noStartupEvents} />}
-          {!useLive && rows.map((row) => (
+          {(mode === "live_windows" || mode === "partial_support") && !useLive && (
+            <EmptyState title={t.startup.noStartupEvents} description={t.system.emptySnapshot} />
+          )}
+          {mode !== "live_windows" && mode !== "partial_support" && rows.length === 0 && (
+            <EmptyState title={t.startup.noStartupEvents} />
+          )}
+          {mode !== "live_windows" && mode !== "partial_support" && rows.map((row) => (
             <div className="data-row" key={`${row.name}-${row.timestamp}`}>
               <span>{row.name}</span>
               <span>{row.source}</span>

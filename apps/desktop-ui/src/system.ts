@@ -1,12 +1,28 @@
 import { invoke } from "@tauri-apps/api/core";
 
 export type SystemPlatform = "windows" | "linux" | "unsupported";
+export type CapabilitySupportStatus = "supported" | "partial" | "unsupported";
+export type ReadOnlyBackendErrorKind =
+  | "unsupported_platform"
+  | "permission_denied"
+  | "unavailable"
+  | "parse_error"
+  | "os_error"
+  | "unknown";
+
+export type ReadOnlyBackendError = {
+  kind: ReadOnlyBackendErrorKind;
+  message: string;
+};
 
 export type CapabilityStatus = {
   id: string;
   label: string;
   supported: boolean;
+  status: CapabilitySupportStatus;
   requires_admin: boolean;
+  data_source: string;
+  read_only: boolean;
   limitation?: string | null;
 };
 
@@ -15,6 +31,7 @@ export type ReadOnlyQueryResult<T> = {
   provider: string;
   capability: CapabilityStatus;
   items: T[];
+  error?: ReadOnlyBackendError | null;
 };
 
 export type ProcessInfo = {
@@ -64,7 +81,7 @@ export type FileLockerInfo = {
   limitation?: string | null;
 };
 
-export type SystemDataMode = "live_windows" | "mock_fallback" | "unsupported_platform";
+export type SystemDataMode = "live_windows" | "partial_support" | "mock_fallback" | "unsupported_platform";
 
 export type SystemLoadResult<T> = {
   data: T;
@@ -72,13 +89,23 @@ export type SystemLoadResult<T> = {
   warning?: string;
 };
 
+export type ReadOnlyDiagnostics = {
+  app_version: string;
+  platform: string;
+  capabilities: CapabilityStatus[];
+  process_count: number;
+  network_connection_count: number;
+  startup_entry_count: number;
+};
+
 export async function loadSystemCapabilities(): Promise<SystemLoadResult<CapabilityStatus[]>> {
   try {
     const capabilities = await invoke<CapabilityStatus[]>("jsentinel_get_system_capabilities");
     const hasSupportedCapability = capabilities.some((capability) => capability.supported);
+    const hasPartialCapability = capabilities.some((capability) => capability.status === "partial");
     return {
       data: capabilities,
-      mode: hasSupportedCapability ? "live_windows" : "unsupported_platform",
+      mode: hasSupportedCapability ? (hasPartialCapability ? "partial_support" : "live_windows") : "unsupported_platform",
     };
   } catch (error) {
     return {
@@ -134,6 +161,24 @@ export async function detectFileLockers(
   );
 }
 
+export async function loadReadOnlyDiagnostics(): Promise<SystemLoadResult<ReadOnlyDiagnostics | null>> {
+  try {
+    const diagnostics = await invoke<ReadOnlyDiagnostics>("jsentinel_get_read_only_diagnostics");
+    const hasPartialCapability = diagnostics.capabilities.some((capability) => capability.status === "partial");
+    const hasSupportedCapability = diagnostics.capabilities.some((capability) => capability.supported);
+    return {
+      data: diagnostics,
+      mode: hasSupportedCapability ? (hasPartialCapability ? "partial_support" : "live_windows") : "unsupported_platform",
+    };
+  } catch (error) {
+    return {
+      data: null,
+      mode: "mock_fallback",
+      warning: String(error),
+    };
+  }
+}
+
 export function modeLabel(mode: SystemDataMode, labels: Record<SystemDataMode, string>): string {
   return labels[mode];
 }
@@ -147,7 +192,14 @@ async function invokeReadOnly<T>(
     const result = await invoke<ReadOnlyQueryResult<T>>(command, args);
     return {
       data: result,
-      mode: result.capability.supported ? "live_windows" : "unsupported_platform",
+      mode: result.error
+        ? "unsupported_platform"
+        : result.capability.supported
+          ? result.capability.status === "partial"
+            ? "partial_support"
+            : "live_windows"
+          : "unsupported_platform",
+      warning: result.error?.message,
     };
   } catch (error) {
     return {
@@ -170,10 +222,17 @@ function unsupportedResult<T>(
       id,
       label,
       supported: false,
+      status: "unsupported",
       requires_admin: false,
+      data_source: "frontend_fallback",
+      read_only: true,
       limitation,
     },
     items: [],
+    error: {
+      kind: "unavailable",
+      message: limitation,
+    },
   };
 }
 
@@ -188,7 +247,10 @@ function unsupportedCapabilities(limitation: string): CapabilityStatus[] {
     id,
     label: id.replace(/_/g, " "),
     supported: false,
+    status: "unsupported",
     requires_admin: false,
+    data_source: "frontend_fallback",
+    read_only: true,
     limitation,
   }));
 }

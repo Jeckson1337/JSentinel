@@ -2,7 +2,15 @@ import { useEffect, useState } from "react";
 import { loadEvents, type AccessEvent } from "../events";
 import type { Dictionary } from "../i18n";
 import { buildProcessSummaries, type ProcessSummary } from "../viewModels";
-import { DisabledActionButton, EmptyState, SectionCard, SeverityBadge, StatusBadge } from "../components/ui";
+import {
+  DisabledActionButton,
+  EmptyState,
+  ErrorState,
+  RefreshBar,
+  SectionCard,
+  SeverityBadge,
+  StatusBadge,
+} from "../components/ui";
 import {
   loadProcessDetails,
   loadProcesses,
@@ -18,27 +26,36 @@ export function ProcessesScreen({ t, refreshToken }: { t: Dictionary; refreshTok
   const [liveProcesses, setLiveProcesses] = useState<ReadOnlyQueryResult<ProcessInfo> | null>(null);
   const [mode, setMode] = useState<SystemDataMode>("mock_fallback");
   const [selectedLive, setSelectedLive] = useState<ProcessInfo | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
+  const [manualRefresh, setManualRefresh] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
-    loadEvents({ kind: null, severity: null, text: null, limit: 100 }).then((result) => {
+    setLoading(true);
+    Promise.all([
+      loadEvents({ kind: null, severity: null, text: null, limit: 100 }),
+      loadProcesses(),
+    ]).then(([eventResult, processResult]) => {
       if (!cancelled) {
-        setEvents(result.data);
-      }
-    });
-    loadProcesses().then((result) => {
-      if (!cancelled) {
-        setLiveProcesses(result.data);
-        setMode(result.mode);
+        setEvents(eventResult.data);
+        setLiveProcesses(processResult.data);
+        setMode(processResult.mode);
+        setWarning(processResult.warning ?? null);
+        setLastUpdated(new Date().toLocaleTimeString());
+        setLoading(false);
       }
     });
     return () => {
       cancelled = true;
     };
-  }, [refreshToken]);
+  }, [refreshToken, manualRefresh]);
 
   const processes = buildProcessSummaries(events);
-  const useLive = mode === "live_windows" && Boolean(liveProcesses?.items.length);
+  const useLive =
+    (mode === "live_windows" || mode === "partial_support") && Boolean(liveProcesses?.items.length);
+  const displayCount = useLive ? liveProcesses?.items.length ?? 0 : processes.length;
 
   function selectLiveProcess(process: ProcessInfo) {
     setSelected(null);
@@ -63,6 +80,19 @@ export function ProcessesScreen({ t, refreshToken }: { t: Dictionary; refreshTok
         <strong>{modeLabel(mode, t.systemDataModes)}</strong>
         <span>{liveProcesses?.capability.limitation ?? t.processes.liveDescription}</span>
       </div>
+
+      <RefreshBar
+        count={displayCount}
+        countLabel={t.system.count}
+        lastUpdated={lastUpdated ? `${t.system.lastRefreshed}: ${lastUpdated}` : null}
+        loading={loading}
+        loadingLabel={t.common.loading}
+        onRefresh={() => setManualRefresh((value) => value + 1)}
+        refreshLabel={t.system.refresh}
+        sourceLabel={modeLabel(mode, t.systemDataModes)}
+        sourceTone={mode === "live_windows" ? "success" : mode === "partial_support" ? "warning" : "neutral"}
+      />
+      {warning && <ErrorState title={t.system.backendWarning} description={warning} />}
 
       <div className="split-layout">
         <SectionCard title={t.processes.tableTitle} description={t.processes.limitations}>
@@ -89,8 +119,13 @@ export function ProcessesScreen({ t, refreshToken }: { t: Dictionary; refreshTok
                   <StatusBadge label={process.confidence} tone="success" />
                 </button>
               ))}
-            {!useLive && processes.length === 0 && <EmptyState title={t.processes.noProcesses} />}
-            {!useLive && processes.map((process) => (
+            {(mode === "live_windows" || mode === "partial_support") && !useLive && (
+              <EmptyState title={t.processes.noProcesses} description={t.system.emptySnapshot} />
+            )}
+            {mode !== "live_windows" && mode !== "partial_support" && processes.length === 0 && (
+              <EmptyState title={t.processes.noProcesses} />
+            )}
+            {mode !== "live_windows" && mode !== "partial_support" && processes.map((process) => (
               <button
                 className="data-row data-row-button"
                 key={`${process.name}-${process.pid ?? "unknown"}`}

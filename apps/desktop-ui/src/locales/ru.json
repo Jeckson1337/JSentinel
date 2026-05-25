@@ -41,6 +41,13 @@
     "networkActivity": "Сетевая активность",
     "windowsBackend": "Windows read-only backend",
     "windowsBackendDescription": "Live-статус возможностей процессов, сети, автозагрузки и locker detection. Privileged actions не exposed.",
+    "notRealTime": "Это обновляемый snapshot, а не real-time monitoring.",
+    "diagnostics": "Read-only diagnostics",
+    "diagnosticsDescription": "Только локальная сводка. Без dump, upload или внешних запросов.",
+    "platform": "Platform",
+    "processCount": "Процессы",
+    "networkCount": "Сетевые соединения",
+    "startupCount": "Startup entries",
     "principles": [
       {
         "state": "Local-only",
@@ -139,14 +146,28 @@
   },
   "systemDataModes": {
     "live_windows": "Live Windows data",
+    "partial_support": "Partial support",
     "mock_fallback": "Demo/mock fallback",
     "unsupported_platform": "Платформа не поддерживается"
+  },
+  "capabilityStatus": {
+    "supported": "Поддерживается",
+    "partial": "Partial",
+    "unsupported": "Не поддерживается"
   },
   "system": {
     "supported": "Поддерживается",
     "unsupported": "Не поддерживается",
     "liveWindowsData": "Live Windows data",
-    "readOnly": "Read-only"
+    "readOnly": "Read-only",
+    "refresh": "Обновить",
+    "lastRefreshed": "Обновлено",
+    "count": "Количество",
+    "capabilities": "Capabilities",
+    "backendWarning": "Backend diagnostic",
+    "emptySnapshot": "Read-only snapshot вернул 0 строк. Это может быть нормально для текущей машины или уровня доступа.",
+    "mockEventData": "Mock/event data",
+    "all": "Все"
   },
   "processes": {
     "title": "Видимость процессов",
@@ -177,7 +198,7 @@
     "title": "Сетевая активность",
     "subtitle": "Read-only Windows TCP/UDP snapshot, если доступен; иначе fallback на mock/events.",
     "recentConnections": "Недавние сетевые соединения",
-    "limitations": "Network control запланирован; firewall changes не реализованы.",
+    "limitations": "Read-only snapshot, не packet monitor. Network control запланирован; firewall changes не реализованы.",
     "process": "Процесс",
     "pid": "PID",
     "local": "Local",
@@ -213,7 +234,7 @@
     "title": "Startup Guard",
     "subtitle": "Read-only Windows startup inventory, если доступен; иначе fallback на mock/events.",
     "entriesTitle": "Startup entries",
-    "limitations": "Startup entries только read-only. Scheduled task parsing пока не реализован.",
+    "limitations": "Registry Run и Startup folders только read-only. Scheduled Tasks и Services пока planned/unsupported.",
     "name": "Name",
     "source": "Source",
     "state": "State",

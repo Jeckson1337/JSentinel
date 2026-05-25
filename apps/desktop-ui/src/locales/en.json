@@ -41,6 +41,13 @@
     "networkActivity": "Network activity",
     "windowsBackend": "Windows read-only backend",
     "windowsBackendDescription": "Live status for process, network, startup, and file-locker capabilities. No privileged actions are exposed.",
+    "notRealTime": "This is a refreshable snapshot, not real-time monitoring.",
+    "diagnostics": "Read-only diagnostics",
+    "diagnosticsDescription": "Local summary only. No dump, upload, or external request is performed.",
+    "platform": "Platform",
+    "processCount": "Processes",
+    "networkCount": "Network connections",
+    "startupCount": "Startup entries",
     "principles": [
       {
         "state": "Local-only",
@@ -80,7 +87,7 @@
     "latestEvent": "Latest event",
     "latestEventDescription": "Timestamp is stored locally with the event record.",
     "mockNoticeTitle": "Demo/mock data",
-    "mockNoticeBody": "Until real OS backends are implemented, dashboard counts are based on local mock/demo events."
+    "mockNoticeBody": "Dashboard counts come from local events. Live Windows snapshots are shown separately and never presented as threat detections."
   },
   "timeline": {
     "title": "Local event timeline",
@@ -139,14 +146,28 @@
   },
   "systemDataModes": {
     "live_windows": "Live Windows data",
+    "partial_support": "Partial support",
     "mock_fallback": "Demo/mock fallback",
     "unsupported_platform": "Unsupported platform"
+  },
+  "capabilityStatus": {
+    "supported": "Supported",
+    "partial": "Partial",
+    "unsupported": "Unsupported"
   },
   "system": {
     "supported": "Supported",
     "unsupported": "Unsupported",
     "liveWindowsData": "Live Windows data",
-    "readOnly": "Read-only"
+    "readOnly": "Read-only",
+    "refresh": "Refresh",
+    "lastRefreshed": "Last refreshed",
+    "count": "Count",
+    "capabilities": "Capabilities",
+    "backendWarning": "Backend diagnostic",
+    "emptySnapshot": "The read-only snapshot returned no rows. This may be normal for the current machine or visibility level.",
+    "mockEventData": "Mock/event data",
+    "all": "All"
   },
   "processes": {
     "title": "Process visibility",
@@ -177,7 +198,7 @@
     "title": "Network activity",
     "subtitle": "Read-only Windows TCP/UDP snapshot when available, with mock/event fallback otherwise.",
     "recentConnections": "Recent network connections",
-    "limitations": "Network control is planned; no firewall changes are implemented.",
+    "limitations": "Read-only snapshot, not a packet monitor. Network control is planned; no firewall changes are implemented.",
     "process": "Process",
     "pid": "PID",
     "local": "Local",
@@ -213,7 +234,7 @@
     "title": "Startup guard",
     "subtitle": "Read-only Windows startup inventory when available, with mock/event fallback otherwise.",
     "entriesTitle": "Startup entries",
-    "limitations": "Startup entries are read-only. Scheduled task parsing is not implemented yet.",
+    "limitations": "Registry Run and Startup folders are read-only. Scheduled Tasks and Services are planned/unsupported.",
     "name": "Name",
     "source": "Source",
     "state": "State",
