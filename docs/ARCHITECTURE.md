@@ -31,6 +31,12 @@ Package 1 introduces a local event flow:
 
 This flow is local-only and does not use real OS backends yet.
 
+## Package 2 UI Layer
+
+Package 2 adds a product-oriented desktop UI over the Package 1 event model. Dashboard, Timeline, Processes, Network, Files, Startup, Settings, and About are now usable screens backed by local SQLite events or explicit frontend mock fallback data.
+
+Risky controls are visible only as disabled placeholders. The UI still does not execute privileged actions or call OS-specific backends directly.
+
 ## Privilege Model
 
 The UI must not execute privileged actions directly. Future privileged operations should flow through:

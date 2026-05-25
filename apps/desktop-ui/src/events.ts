@@ -61,7 +61,7 @@ export type EventLoadResult<T> = {
   warning?: string;
 };
 
-const fallbackEvents: AccessEvent[] = [
+export const fallbackEvents: AccessEvent[] = [
   {
     id: "frontend-mock-process",
     timestamp: "demo:recent",
@@ -193,12 +193,34 @@ export function eventTimestamp(event: AccessEvent): string {
   return typeof event.timestamp === "string" ? event.timestamp : event.timestamp[0];
 }
 
+export function eventTimestampLabel(event: AccessEvent): string {
+  const timestamp = eventTimestamp(event);
+
+  if (timestamp.startsWith("unix:")) {
+    const seconds = Number(timestamp.replace("unix:", ""));
+    if (Number.isFinite(seconds)) {
+      return new Date(seconds * 1000).toLocaleString();
+    }
+  }
+
+  return timestamp;
+}
+
 export function summaryTimestamp(summary: DashboardSummary): string | null {
   const timestamp = summary.latest_event_timestamp;
   if (!timestamp) {
     return null;
   }
   return typeof timestamp === "string" ? timestamp : timestamp[0];
+}
+
+export function metadataValue(event: AccessEvent, key: string): string | null {
+  if (!event.metadata_json || typeof event.metadata_json !== "object") {
+    return null;
+  }
+
+  const value = (event.metadata_json as Record<string, unknown>)[key];
+  return typeof value === "string" || typeof value === "number" ? String(value) : null;
 }
 
 function filterFallbackEvents(query: EventQuery): AccessEvent[] {

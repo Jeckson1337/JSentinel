@@ -11,20 +11,18 @@ import {
 } from "lucide-react";
 import { Sidebar } from "./components/Sidebar";
 import { SponsorBanner } from "./components/SponsorBanner";
+import { TopBar } from "./components/ui";
 import { DashboardScreen } from "./screens/DashboardScreen";
-import { PlaceholderScreen } from "./screens/PlaceholderScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { AboutScreen } from "./screens/AboutScreen";
 import { TimelineScreen } from "./screens/TimelineScreen";
+import { ProcessesScreen } from "./screens/ProcessesScreen";
+import { NetworkScreen } from "./screens/NetworkScreen";
+import { FilesScreen } from "./screens/FilesScreen";
+import { StartupScreen } from "./screens/StartupScreen";
 import { seedDemoEvents } from "./events";
 import { getDictionary, type Locale } from "./i18n";
 import type { NavigationItem, ScreenId } from "./types";
-
-type PlaceholderScreenId = "processes" | "network" | "files" | "startup";
-
-function isPlaceholderScreen(screen: ScreenId): screen is PlaceholderScreenId {
-  return ["processes", "network", "files", "startup"].includes(screen);
-}
 
 export function App() {
   const [locale, setLocale] = useState<Locale>("en");
@@ -66,9 +64,16 @@ export function App() {
         onNavigate={setActiveScreen}
       />
       <main className="main-surface">
+        <TopBar title={t.app.title} subtitle={t.app.subtitle} />
         <SponsorBanner text={t.sponsor.placeholder} note={t.sponsor.note} />
-        {activeScreen === "dashboard" && <DashboardScreen t={t} refreshToken={refreshToken} />}
+        {activeScreen === "dashboard" && (
+          <DashboardScreen t={t} refreshToken={refreshToken} onNavigate={setActiveScreen} />
+        )}
         {activeScreen === "timeline" && <TimelineScreen t={t} refreshToken={refreshToken} />}
+        {activeScreen === "processes" && <ProcessesScreen t={t} refreshToken={refreshToken} />}
+        {activeScreen === "network" && <NetworkScreen t={t} refreshToken={refreshToken} />}
+        {activeScreen === "files" && <FilesScreen t={t} refreshToken={refreshToken} />}
+        {activeScreen === "startup" && <StartupScreen t={t} refreshToken={refreshToken} />}
         {activeScreen === "settings" && (
           <SettingsScreen
             locale={locale}
@@ -79,13 +84,6 @@ export function App() {
           />
         )}
         {activeScreen === "about" && <AboutScreen t={t} />}
-        {isPlaceholderScreen(activeScreen) && (
-          <PlaceholderScreen
-            title={navigation.find((item) => item.id === activeScreen)?.label ?? ""}
-            description={t.placeholders[activeScreen]}
-            badge={t.common.planned}
-          />
-        )}
       </main>
     </div>
   );

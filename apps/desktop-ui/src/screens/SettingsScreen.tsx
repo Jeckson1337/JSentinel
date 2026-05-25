@@ -1,4 +1,5 @@
 import type { Dictionary, Locale } from "../i18n";
+import { SectionCard, StatusBadge } from "../components/ui";
 
 type SettingsScreenProps = {
   locale: Locale;
@@ -24,37 +25,38 @@ export function SettingsScreen({
       </div>
 
       <div className="settings-grid">
-        <section className="settings-panel">
-          <h2>{t.settings.language}</h2>
+        <SectionCard title={t.settings.language} description={t.settings.languageDescription}>
           <select value={locale} onChange={(event) => setLocale(event.target.value as Locale)}>
             <option value="en">English</option>
             <option value="ru">Русский</option>
           </select>
-        </section>
+        </SectionCard>
 
-        <section className="settings-panel">
-          <h2>{t.settings.privacy}</h2>
-          <p>{t.settings.privacyDescription}</p>
-        </section>
+        <SectionCard title={t.settings.privacy} description={t.settings.privacyDescription}>
+          <div className="badge-list">
+            <StatusBadge label={t.settings.localOnly} tone="success" />
+            <StatusBadge label={t.common.noTelemetry} tone="success" />
+            <StatusBadge label={t.settings.noAccounts} tone="success" />
+            <StatusBadge label={t.settings.noAdSdk} tone="success" />
+          </div>
+        </SectionCard>
 
-        <section className="settings-panel">
-          <h2>{t.settings.sponsor}</h2>
-          <p>{t.settings.sponsorDescription}</p>
-        </section>
+        <SectionCard title={t.settings.sponsor} description={t.settings.sponsorDescription}>
+          <p className="muted-line">{t.settings.sponsorDetails}</p>
+        </SectionCard>
 
-        <section className="settings-panel">
-          <h2>{t.settings.releaseChannel}</h2>
-          <p>{t.settings.releaseDescription}</p>
-        </section>
-
-        <section className="settings-panel">
-          <h2>{t.settings.demoData}</h2>
-          <p>{t.settings.demoDataDescription}</p>
+        <SectionCard title={t.settings.storage} description={t.settings.storageDescription}>
+          <p className="code-line">.jsentinel-dev/jsentinel.sqlite3</p>
+          <p className="muted-line">{t.settings.demoDataDescription}</p>
           <button className="primary-button" type="button" onClick={onSeedDemoEvents}>
             {t.settings.seedDemoEvents}
           </button>
           {seedStatus && <p className="settings-status">{seedStatus}</p>}
-        </section>
+        </SectionCard>
+
+        <SectionCard title={t.settings.releaseChannel} description={t.settings.releaseDescription}>
+          <p className="muted-line">{t.settings.releaseDetails}</p>
+        </SectionCard>
       </div>
     </section>
   );
