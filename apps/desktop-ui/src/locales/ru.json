@@ -315,6 +315,9 @@
     "status": "Status",
     "target": "Target",
     "displayName": "Display name",
+    "pid": "PID",
+    "processName": "Имя процесса",
+    "processPath": "Путь процесса",
     "timestamp": "Время",
     "result": "Result",
     "noTarget": "Нет target"

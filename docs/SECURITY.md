@@ -13,6 +13,8 @@ JSentinel should be designed around conservative local control.
 - Safe action targets must be validated again in the backend before execution, even after UI planning.
 - Kill process is allowed only as a single-PID, confirmation-gated, safety-prechecked action.
 - Kill process must never kill by name, kill process trees, retry in loops, or attempt admin escalation.
+- Kill process denies JSentinel itself, its parent process when detectable, protected process names, missing verified process details, and Windows-directory targets.
+- Kill process audit metadata must not store full command lines.
 - Reversible actions are preferred.
 - No force-delete in v1.
 - No kernel driver in v1.

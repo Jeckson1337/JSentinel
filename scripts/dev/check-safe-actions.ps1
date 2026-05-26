@@ -22,7 +22,9 @@ foreach ($pattern in @(
     'Command::new\("powershell',
     'Command::new\("pwsh',
     'cmd /C',
-    'cmd.exe /C'
+    'cmd.exe /C',
+    'powershell -',
+    'pwsh -'
 )) {
     if ($content -match $pattern) {
         $errors += "Forbidden command execution pattern found in safe action executor: $pattern"
@@ -31,20 +33,43 @@ foreach ($pattern in @(
 
 foreach ($pattern in @(
     'taskkill',
-    'Stop-Process'
+    'Stop-Process',
+    'kill /f',
+    'TerminateJobObject',
+    'SeDebugPrivilege',
+    'AdjustTokenPrivileges',
+    'CreateToolhelp32Snapshot',
+    'Process32First',
+    'Process32Next',
+    'netsh',
+    'New-NetFirewallRule',
+    'Set-NetFirewallRule',
+    'Remove-NetFirewallRule'
 )) {
     if (($content -match $pattern) -or ($windowsContent -match $pattern)) {
-        $errors += "Forbidden process termination command pattern found: $pattern"
+        $errors += "Forbidden dangerous-action pattern found in source: $pattern"
     }
 }
 
 foreach ($required in @(
     'TerminateProcess',
     'OpenProcess',
-    'precheck_kill_process'
+    'precheck_kill_process',
+    'is_self_or_parent_process',
+    'current_process_id'
 )) {
     if (-not $windowsContent.Contains($required)) {
         $errors += "Expected kill-process guard/API not found: $required"
+    }
+}
+
+foreach ($required in @(
+    'is_windows_directory_path',
+    'Process path is unavailable',
+    'Command line is intentionally not stored'
+)) {
+    if (-not $content.Contains($required)) {
+        $errors += "Expected kill-process hardening guard not found: $required"
     }
 }
 

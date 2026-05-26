@@ -32,6 +32,7 @@ Package 4C denies:
 - JSentinel's own process;
 - the parent desktop process when detectable;
 - unknown or unverified process names;
+- missing process path;
 - `System`;
 - `Idle`;
 - `Registry`;
@@ -49,6 +50,7 @@ Package 4C denies:
 - `explorer.exe`;
 - processes under `C:\Windows\System32`;
 - processes under `C:\Windows\SysWOW64`.
+- processes under `C:\Windows`.
 
 If the process cannot be opened because of permissions or OS protection, JSentinel reports failure/denied and does not attempt elevation.
 
@@ -72,10 +74,10 @@ Statuses:
 
 - `succeeded`: one allowed PID termination was requested successfully;
 - `denied`: policy or safety precheck denied the request;
-- `failed`: OS call failed;
+- `failed`: OS call failed, or the process disappeared/became unavailable between precheck and execution;
 - `unsupported`: platform does not support this action.
 
-Audit remains local-only. There is no upload, telemetry, analytics, account, ad SDK, or external service.
+Audit remains local-only. There is no upload, telemetry, analytics, account, ad SDK, or external service. Command lines are intentionally not stored in kill action metadata.
 
 ## Still Disabled
 

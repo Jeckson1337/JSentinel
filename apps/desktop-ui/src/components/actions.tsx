@@ -28,6 +28,11 @@ export function ConfirmationDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const metadata = plan.request.metadata_json ?? {};
+  const pid = typeof metadata.pid === "number" ? metadata.pid : null;
+  const processName = typeof metadata.process_name === "string" ? metadata.process_name : null;
+  const processPath = typeof metadata.process_path === "string" ? metadata.process_path : null;
+
   return (
     <div className="dialog-backdrop" role="presentation">
       <section className="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="action-dialog-title">
@@ -49,6 +54,24 @@ export function ConfirmationDialog({
             <dt>{t.actions.target}</dt>
             <dd>{plan.request.target || t.actions.noTarget}</dd>
           </div>
+          {pid !== null && (
+            <div>
+              <dt>{t.actions.pid}</dt>
+              <dd>{pid}</dd>
+            </div>
+          )}
+          {processName && (
+            <div>
+              <dt>{t.actions.processName}</dt>
+              <dd>{processName}</dd>
+            </div>
+          )}
+          {processPath && (
+            <div>
+              <dt>{t.actions.processPath}</dt>
+              <dd>{processPath}</dd>
+            </div>
+          )}
         </dl>
         <ul className="plain-list">
           {plan.expected_effects.map((effect) => (

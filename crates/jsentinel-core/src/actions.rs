@@ -92,7 +92,10 @@ pub trait SafeActionAdapter {
     fn reveal_path(&self, target: &ValidatedRevealPath) -> Result<(), SafeActionError>;
     fn open_windows_settings(&self, uri: &str) -> Result<(), SafeActionError>;
     fn precheck_kill_process(&self, target: &KillProcessTarget) -> KillProcessSafetyCheck;
-    fn kill_process(&self, target: &KillProcessTarget) -> Result<KillProcessSafetyCheck, SafeActionError>;
+    fn kill_process(
+        &self,
+        target: &KillProcessTarget,
+    ) -> Result<KillProcessSafetyCheck, SafeActionError>;
 }
 
 pub struct SafeActionExecutor<A> {
@@ -214,7 +217,7 @@ impl SafeActionAdapter for DefaultSafeActionAdapter {
     }
 
     fn precheck_kill_process(&self, target: &KillProcessTarget) -> KillProcessSafetyCheck {
-        let current_pid = std::process::id();
+        let current_pid = current_process_id();
         evaluate_kill_process_safety(target, current_pid, None)
     }
 
@@ -361,10 +364,10 @@ pub fn evaluate_kill_process_safety(
     if target.pid == 0 {
         return KillProcessSafetyCheck::denied("PID 0 cannot be terminated.");
     }
-    if target.pid == current_pid {
-        return KillProcessSafetyCheck::denied("JSentinel will not terminate its own process.");
-    }
-    if parent_pid == Some(target.pid) {
+    if is_self_or_parent_process(target.pid, current_pid, parent_pid) {
+        if target.pid == current_pid {
+            return KillProcessSafetyCheck::denied("JSentinel will not terminate its own process.");
+        }
         return KillProcessSafetyCheck::denied(
             "JSentinel will not terminate its parent desktop process.",
         );
@@ -393,15 +396,38 @@ pub fn evaluate_kill_process_safety(
         ));
     }
 
-    if let Some(path) = target.process_path.as_deref() {
-        if is_windows_system_path(path) {
-            return KillProcessSafetyCheck::denied(
-                "Processes under Windows system directories are denied in Package 4C.",
-            );
-        }
+    let Some(path) = target
+        .process_path
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    else {
+        return KillProcessSafetyCheck::denied(
+            "Process path is unavailable; Package 4C requires verified process details.",
+        );
+    };
+
+    if is_windows_system_path(path) {
+        return KillProcessSafetyCheck::denied(
+            "Processes under Windows system directories are denied in Package 4C.",
+        );
+    }
+
+    if is_windows_directory_path(path) {
+        return KillProcessSafetyCheck::denied(
+            "Processes under the Windows directory are denied in Package 4C.",
+        );
     }
 
     KillProcessSafetyCheck::allowed()
+}
+
+pub fn current_process_id() -> u32 {
+    std::process::id()
+}
+
+pub fn is_self_or_parent_process(pid: u32, current_pid: u32, parent_pid: Option<u32>) -> bool {
+    pid == current_pid || parent_pid == Some(pid)
 }
 
 pub fn is_hard_denied_process_name(name: &str) -> bool {
@@ -432,6 +458,11 @@ pub fn is_windows_system_path(path: &str) -> bool {
         || normalized == "c:\\windows\\system32"
         || normalized.starts_with("c:\\windows\\syswow64\\")
         || normalized == "c:\\windows\\syswow64"
+}
+
+pub fn is_windows_directory_path(path: &str) -> bool {
+    let normalized = path.replace('/', "\\").to_ascii_lowercase();
+    normalized.starts_with("c:\\windows\\") || normalized == "c:\\windows"
 }
 
 fn denied_result(plan: &ActionPlan) -> ActionResult {
@@ -489,7 +520,7 @@ fn kill_metadata(target: &KillProcessTarget, safety: &KillProcessSafetyCheck) ->
         "pid": target.pid,
         "process_name": target.process_name,
         "process_path": target.process_path,
-        "command_line": target.command_line,
+        "metadata_note": "process_name/process_path are request context; Windows backend re-queries PID before execution. Command line is intentionally not stored in audit metadata.",
         "safety": safety,
     })
 }
@@ -570,6 +601,9 @@ mod tests {
         settings: RefCell<Vec<String>>,
     }
 
+    #[derive(Default)]
+    struct FailingKillAdapter;
+
     impl SafeActionAdapter for MockAdapter {
         fn reveal_path(&self, target: &ValidatedRevealPath) -> Result<(), SafeActionError> {
             self.revealed.borrow_mut().push(target.path.clone());
@@ -590,6 +624,29 @@ mod tests {
             target: &KillProcessTarget,
         ) -> Result<KillProcessSafetyCheck, SafeActionError> {
             Ok(self.precheck_kill_process(target))
+        }
+    }
+
+    impl SafeActionAdapter for FailingKillAdapter {
+        fn reveal_path(&self, _target: &ValidatedRevealPath) -> Result<(), SafeActionError> {
+            Ok(())
+        }
+
+        fn open_windows_settings(&self, _uri: &str) -> Result<(), SafeActionError> {
+            Ok(())
+        }
+
+        fn precheck_kill_process(&self, target: &KillProcessTarget) -> KillProcessSafetyCheck {
+            evaluate_kill_process_safety(target, 9000, Some(9001))
+        }
+
+        fn kill_process(
+            &self,
+            _target: &KillProcessTarget,
+        ) -> Result<KillProcessSafetyCheck, SafeActionError> {
+            Err(SafeActionError::OsError(
+                "mock terminate process failure".to_string(),
+            ))
         }
     }
 
@@ -813,6 +870,46 @@ mod tests {
             command_line: None,
         };
         assert!(!evaluate_kill_process_safety(&system_path_target, 100, None).allowed);
+
+        let windows_path_target = KillProcessTarget {
+            pid: 42,
+            process_name: Some("demo.exe".to_string()),
+            process_path: Some("C:\\Windows\\Temp\\demo.exe".to_string()),
+            command_line: None,
+        };
+        assert!(!evaluate_kill_process_safety(&windows_path_target, 100, None).allowed);
+    }
+
+    #[test]
+    fn kill_safety_denies_unknown_or_unverified_target() {
+        for target in [
+            KillProcessTarget {
+                pid: 42,
+                process_name: None,
+                process_path: Some("C:\\Users\\Demo\\demo.exe".to_string()),
+                command_line: None,
+            },
+            KillProcessTarget {
+                pid: 42,
+                process_name: Some("pid-42".to_string()),
+                process_path: Some("C:\\Users\\Demo\\demo.exe".to_string()),
+                command_line: None,
+            },
+            KillProcessTarget {
+                pid: 42,
+                process_name: Some("unknown".to_string()),
+                process_path: Some("C:\\Users\\Demo\\demo.exe".to_string()),
+                command_line: None,
+            },
+            KillProcessTarget {
+                pid: 42,
+                process_name: Some("demo.exe".to_string()),
+                process_path: None,
+                command_line: None,
+            },
+        ] {
+            assert!(!evaluate_kill_process_safety(&target, 100, None).allowed);
+        }
     }
 
     #[test]
@@ -839,12 +936,59 @@ mod tests {
         request.metadata_json = Some(serde_json::json!({
             "pid": 42,
             "process_name": "demo.exe",
-            "process_path": "C:\\Users\\Demo\\demo.exe"
+            "process_path": "C:\\Users\\Demo\\demo.exe",
+            "command_line": "demo.exe --sensitive-token-placeholder"
         }));
 
         let result = executor.execute(request);
 
         assert_eq!(result.status, ActionStatus::Succeeded);
+        let metadata = result.metadata_json.expect("kill metadata is recorded");
+        assert_eq!(metadata["pid"].as_u64(), Some(42));
+        assert!(metadata.get("command_line").is_none());
+    }
+
+    #[test]
+    fn executor_kill_process_denied_path_writes_denied_result() {
+        let executor = SafeActionExecutor::new(MockAdapter::default());
+        let mut request = ActionRequest::new(
+            ActionKind::KillProcess,
+            "0",
+            "PID 0",
+            "processes",
+        );
+        request.metadata_json = Some(serde_json::json!({
+            "pid": 0,
+            "process_name": "System",
+            "process_path": "C:\\Windows\\System32\\System"
+        }));
+
+        let result = executor.execute(request);
+
+        assert_eq!(result.status, ActionStatus::Denied);
+        assert!(result.error.is_some());
+        assert!(result.metadata_json.is_some());
+    }
+
+    #[test]
+    fn executor_kill_process_os_error_writes_failed_result() {
+        let executor = SafeActionExecutor::new(FailingKillAdapter);
+        let mut request = ActionRequest::new(
+            ActionKind::KillProcess,
+            "42",
+            "Demo process",
+            "processes",
+        );
+        request.metadata_json = Some(serde_json::json!({
+            "pid": 42,
+            "process_name": "demo.exe",
+            "process_path": "C:\\Users\\Demo\\demo.exe"
+        }));
+
+        let result = executor.execute(request);
+
+        assert_eq!(result.status, ActionStatus::Failed);
+        assert!(result.error.is_some());
         assert!(result.metadata_json.is_some());
     }
 

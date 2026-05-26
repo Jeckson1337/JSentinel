@@ -14,7 +14,7 @@ Package 4B adds the first safe actions. Action buttons ask the policy layer for 
 
 Currently enabled safe actions are revealing an existing local path in Windows Explorer and opening allowlisted Windows Settings pages such as Privacy, Startup Apps, and Network Status. JSentinel does not open arbitrary URLs from action input.
 
-Package 4C adds a controlled Kill Process action. It can terminate one non-protected process by PID after confirmation and safety checks. Unsaved work in that process may be lost.
+Package 4C adds a controlled Kill Process action. It can terminate one non-protected process by PID after confirmation and live backend safety checks. Unsaved work in that process may be lost. JSentinel refuses its own process, system/protected names, Windows-directory targets, missing verified details, process trees, and name-only kills.
 
 Other dangerous actions are not implemented. JSentinel does not change firewall rules, write registry keys, quarantine files, force unlock files, disable startup entries, kill process trees, kill by name, or delete files on reboot.
 

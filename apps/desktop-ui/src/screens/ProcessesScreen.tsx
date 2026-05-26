@@ -185,7 +185,6 @@ export function ProcessesScreen({ t, refreshToken }: { t: Dictionary; refreshTok
                     pid: selectedLive.pid,
                     process_name: selectedLive.name,
                     process_path: selectedLive.path,
-                    command_line: selectedLive.command_line,
                   }}
                   disabled={!killSafety || !killSafety.allowed}
                   disabledReason={killSafety?.reason ?? t.processes.killPrecheckPending}

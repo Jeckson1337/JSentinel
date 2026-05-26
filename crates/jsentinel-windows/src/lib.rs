@@ -6,6 +6,8 @@ use jsentinel_core::{
     ReadOnlyBackendErrorKind, ReadOnlyQueryResult, SafeActionAdapter, SafeActionError,
     StartupEntryInfo, SystemPlatform, ValidatedRevealPath,
 };
+#[cfg(windows)]
+use jsentinel_core::{current_process_id, is_self_or_parent_process};
 use serde::Deserialize;
 
 const PROVIDER_NAME: &str = "windows_read_only";
@@ -125,7 +127,7 @@ pub fn precheck_kill_process(pid: u32) -> KillProcessSafetyCheck {
             ));
         };
 
-        let current_pid = std::process::id();
+        let current_pid = current_process_id();
         let current_parent_pid = current_process_parent_pid();
         let target = kill_target_from_process(process);
         evaluate_kill_process_safety(&target, current_pid, current_parent_pid)
@@ -141,8 +143,26 @@ pub fn precheck_kill_process(pid: u32) -> KillProcessSafetyCheck {
 pub fn kill_process(pid: u32) -> Result<KillProcessSafetyCheck, SafeActionError> {
     #[cfg(windows)]
     {
+        if is_self_or_parent_process(pid, current_process_id(), current_process_parent_pid()) {
+            return Ok(KillProcessSafetyCheck::denied(
+                "JSentinel will not terminate its own or parent desktop process.",
+            ));
+        }
+
         let check = precheck_kill_process(pid);
         if !check.allowed {
+            if check
+                .reason
+                .as_deref()
+                .is_some_and(|reason| reason.contains("not found or disappeared"))
+            {
+                return Err(SafeActionError::OsError(
+                    check
+                        .reason
+                        .clone()
+                        .unwrap_or_else(|| format!("Process {pid} was unavailable.")),
+                ));
+            }
             return Ok(check);
         }
 
@@ -339,7 +359,7 @@ fn kill_target_from_process(process: ProcessInfo) -> KillProcessTarget {
 
 #[cfg(windows)]
 fn current_process_parent_pid() -> Option<u32> {
-    let current_pid = std::process::id();
+    let current_pid = current_process_id();
     list_processes()
         .items
         .into_iter()
@@ -760,6 +780,14 @@ mod tests {
 
         assert!(!check.allowed);
         assert!(check.reason.is_some());
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn non_windows_kill_process_is_unsupported() {
+        let result = super::kill_process(42);
+
+        assert!(result.is_err());
     }
 
     #[cfg(not(windows))]

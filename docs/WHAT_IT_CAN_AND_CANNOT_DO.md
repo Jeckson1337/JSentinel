@@ -16,7 +16,7 @@
 - Store local action audit records for denied, dry-run, unsupported, or completed action paths.
 - Open existing local filesystem paths in Windows Explorer after confirmation.
 - Open allowlisted Windows Settings pages after confirmation.
-- Terminate one non-protected process by PID after confirmation and safety checks.
+- Terminate one non-protected, non-system process by PID after confirmation, live backend verification, and safety checks.
 
 ## Cannot Do Yet
 
@@ -33,13 +33,14 @@
 - Modify firewall rules.
 - Write the Windows registry.
 - Install services or daemons.
-- Execute destructive actions from the action framework.
+- Execute destructive actions other than the Package 4C single-PID kill action.
 - Run automatic mitigation in the background.
 - Open arbitrary external URLs from action input.
 - Execute arbitrary shell commands from action input.
 - Kill process trees.
 - Kill processes by name.
 - Automatically kill processes.
+- Kill JSentinel itself, its parent process when detectable, protected/system processes, or Windows-directory processes.
 
 ## Will Not Claim
 
