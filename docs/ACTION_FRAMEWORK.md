@@ -20,8 +20,9 @@ All DTOs are serializable so Rust, Tauri, SQLite, and the UI can share one contr
 
 - `reveal_path`: safe, available, confirmation-gated, local filesystem only.
 - `open_windows_settings`: safe, available, confirmation-gated, Windows Settings URI allowlist only.
+- `kill_process`: dangerous, available only with PID metadata, confirmation-gated, and safety-prechecked.
 - `detect_file_lockers`: caution, unsupported/planned.
-- `kill_process`, `block_network`, `unblock_network`, `disable_startup`, `restore_startup`, `quarantine_file`, `restore_quarantine`, and `schedule_delete_on_reboot`: dangerous and planned/disabled.
+- `block_network`, `unblock_network`, `disable_startup`, `restore_startup`, `quarantine_file`, `restore_quarantine`, and `schedule_delete_on_reboot`: dangerous and planned/disabled.
 
 Dangerous actions return a disabled reason: the framework is prepared, but implementation belongs to a later package.
 
@@ -31,6 +32,8 @@ The UI asks the backend for an `ActionPlan` before showing confirmation. Confirm
 
 Package 4B.5 hardens this path by rejecting URL-like path targets, shell-like schemes, embedded null characters, UNC paths, malformed settings URIs, and non-allowlisted settings pages before OS launch.
 
+Package 4C adds `kill_process` for one PID only. It re-plans the request in the backend, requires confirmation, denies protected/system/self targets, and writes every attempt to local action history.
+
 ## Audit Log
 
 Action results are stored locally in SQLite `action_history`. The log supports filtering by action kind, status, text search, limit, and newest-first ordering.
@@ -39,9 +42,8 @@ The audit log is local-only. There is no upload, telemetry, account, or external
 
 ## Explicit Non-Goals
 
-Package 4B does not implement:
+Package 4C does not implement:
 
-- process kill;
 - firewall block/unblock;
 - startup disable/restore;
 - quarantine move/restore;

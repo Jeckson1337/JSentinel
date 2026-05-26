@@ -369,10 +369,43 @@ impl PolicyEngine {
                         .to_string(),
                 ],
             },
+            ActionKind::KillProcess => {
+                if !request_has_pid_metadata(&request) {
+                    return planned_plan(
+                        request,
+                        ActionAvailability::Disabled,
+                        "Kill process requires explicit PID metadata and cannot use a name-only target.",
+                    );
+                }
+
+                ActionPlan {
+                    confirmation_title: "Confirm process termination".to_string(),
+                    confirmation_message:
+                        "This terminates one running process by PID. Unsaved work in that process may be lost."
+                            .to_string(),
+                    request,
+                    availability: ActionAvailability::RequiresConfirmation,
+                    requires_confirmation: true,
+                    irreversible: true,
+                    can_undo: false,
+                    disabled_reason: None,
+                    expected_effects: vec![
+                        "Terminates one running process by PID.".to_string(),
+                        "Unsaved work in that process may be lost.".to_string(),
+                        "This does not delete files.".to_string(),
+                        "This does not remove startup entries.".to_string(),
+                        "This does not block network access.".to_string(),
+                    ],
+                    warnings: vec![
+                        "Do not terminate system processes.".to_string(),
+                        "Terminating apps can cause data loss.".to_string(),
+                    ],
+                }
+            }
             ActionKind::DetectFileLockers => planned_plan(
                 request,
                 ActionAvailability::Unsupported,
-                "File locker detection is planned but not implemented in Package 4B.",
+                "File locker detection is planned but not implemented in Package 4C.",
             ),
             _ => planned_plan(request, ActionAvailability::Planned, FUTURE_ACTION_REASON),
         }
@@ -394,8 +427,21 @@ impl PolicyEngine {
     }
 
     pub fn is_action_enabled(kind: ActionKind) -> bool {
-        matches!(kind, ActionKind::RevealPath | ActionKind::OpenWindowsSettings)
+        matches!(
+            kind,
+            ActionKind::RevealPath | ActionKind::OpenWindowsSettings | ActionKind::KillProcess
+        )
     }
+}
+
+fn request_has_pid_metadata(request: &ActionRequest) -> bool {
+    request
+        .metadata_json
+        .as_ref()
+        .and_then(|metadata| metadata.get("pid"))
+        .and_then(Value::as_u64)
+        .and_then(|value| u32::try_from(value).ok())
+        .is_some()
 }
 
 fn planned_plan(
@@ -489,7 +535,7 @@ mod tests {
 
     #[test]
     fn dangerous_action_is_planned_not_executable() {
-        let request = ActionRequest::new(ActionKind::KillProcess, "42", "PID 42", "processes");
+        let request = ActionRequest::new(ActionKind::BlockNetwork, "tcp:443", "TCP 443", "network");
         let plan = PolicyEngine::plan_action(request);
 
         assert_eq!(plan.availability, ActionAvailability::Planned);
@@ -507,5 +553,29 @@ mod tests {
 
         assert!(encoded.contains("\"status\":\"dry_run\""));
         assert!(encoded.contains("\"kind\":\"reveal_path\""));
+    }
+
+    #[test]
+    fn kill_process_requires_pid_metadata() {
+        let request = ActionRequest::new(ActionKind::KillProcess, "42", "PID 42", "processes");
+        let plan = PolicyEngine::plan_action(request);
+
+        assert_eq!(plan.availability, ActionAvailability::Disabled);
+        assert!(!plan.requires_confirmation);
+        assert!(plan.disabled_reason.is_some());
+    }
+
+    #[test]
+    fn kill_process_with_pid_metadata_requires_confirmation() {
+        let mut request =
+            ActionRequest::new(ActionKind::KillProcess, "42", "Demo process", "processes");
+        request.metadata_json = Some(serde_json::json!({ "pid": 42, "process_name": "demo.exe" }));
+        let plan = PolicyEngine::plan_action(request);
+
+        assert_eq!(plan.request.risk_level, ActionRiskLevel::Dangerous);
+        assert_eq!(plan.availability, ActionAvailability::RequiresConfirmation);
+        assert!(plan.requires_confirmation);
+        assert!(plan.irreversible);
+        assert!(!plan.can_undo);
     }
 }

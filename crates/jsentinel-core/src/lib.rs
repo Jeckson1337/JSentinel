@@ -3,9 +3,11 @@
 pub mod actions;
 
 pub use actions::{
+    evaluate_kill_process_safety, is_hard_denied_process_name, is_windows_system_path,
+    kill_process_target_from_request,
     allowed_windows_settings_uris, is_allowed_windows_settings_uri, settings_uri_from_request,
-    validate_reveal_path, DefaultSafeActionAdapter, SafeActionAdapter, SafeActionError,
-    SafeActionExecutor, ValidatedRevealPath,
+    validate_reveal_path, DefaultSafeActionAdapter, KillProcessSafetyCheck, KillProcessTarget,
+    SafeActionAdapter, SafeActionError, SafeActionExecutor, ValidatedRevealPath,
 };
 
 use jsentinel_db::{init_db, DashboardSummary, Database, DbResult, EventQuery};

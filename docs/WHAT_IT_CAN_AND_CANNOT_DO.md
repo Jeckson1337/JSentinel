@@ -16,6 +16,7 @@
 - Store local action audit records for denied, dry-run, unsupported, or completed action paths.
 - Open existing local filesystem paths in Windows Explorer after confirmation.
 - Open allowlisted Windows Settings pages after confirmation.
+- Terminate one non-protected process by PID after confirmation and safety checks.
 
 ## Cannot Do Yet
 
@@ -28,7 +29,6 @@
 - Quarantine files.
 - Restore files.
 - Delete files.
-- Kill processes.
 - Block network access.
 - Modify firewall rules.
 - Write the Windows registry.
@@ -37,6 +37,9 @@
 - Run automatic mitigation in the background.
 - Open arbitrary external URLs from action input.
 - Execute arbitrary shell commands from action input.
+- Kill process trees.
+- Kill processes by name.
+- Automatically kill processes.
 
 ## Will Not Claim
 

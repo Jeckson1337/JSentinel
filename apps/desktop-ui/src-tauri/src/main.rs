@@ -1,8 +1,8 @@
 #![forbid(unsafe_code)]
 
 use jsentinel_core::{
-    CapabilityStatus, DefaultSafeActionAdapter, EventService, FileLockerInfo,
-    NetworkConnectionInfo, ProcessInfo, ReadOnlyQueryResult, SafeActionExecutor, StartupEntryInfo,
+    CapabilityStatus, EventService, FileLockerInfo, KillProcessSafetyCheck, NetworkConnectionInfo,
+    ProcessInfo, ReadOnlyQueryResult, SafeActionExecutor, StartupEntryInfo,
 };
 use jsentinel_db::{DashboardSummary, EventQuery};
 use jsentinel_events::{AccessEvent, EventId};
@@ -102,6 +102,11 @@ fn jsentinel_detect_file_lockers(path: String) -> ReadOnlyQueryResult<FileLocker
 }
 
 #[tauri::command]
+fn jsentinel_precheck_kill_process(pid: u32) -> KillProcessSafetyCheck {
+    jsentinel_windows::precheck_kill_process(pid)
+}
+
+#[tauri::command]
 fn jsentinel_get_read_only_diagnostics() -> ReadOnlyDiagnostics {
     let processes = jsentinel_windows::list_processes();
     let network_connections = jsentinel_windows::list_network_connections();
@@ -127,7 +132,7 @@ fn jsentinel_execute_safe_action(
     state: tauri::State<'_, AppState>,
     request: ActionRequest,
 ) -> Result<ActionResult, String> {
-    let executor = SafeActionExecutor::new(DefaultSafeActionAdapter);
+    let executor = SafeActionExecutor::new(jsentinel_windows::WindowsActionAdapter);
     let result = executor.execute(request);
 
     let service = state
@@ -188,6 +193,7 @@ fn main() {
             jsentinel_list_network_connections,
             jsentinel_list_startup_entries,
             jsentinel_detect_file_lockers,
+            jsentinel_precheck_kill_process,
             jsentinel_get_read_only_diagnostics,
             jsentinel_plan_action,
             jsentinel_execute_safe_action,

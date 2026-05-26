@@ -11,6 +11,7 @@ import {
   StatusBadge,
 } from "../components/ui";
 import { ActionButton } from "../components/actions";
+import { precheckKillProcess, type KillProcessSafetyCheck } from "../actions";
 import {
   loadProcessDetails,
   loadProcesses,
@@ -30,6 +31,7 @@ export function ProcessesScreen({ t, refreshToken }: { t: Dictionary; refreshTok
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [manualRefresh, setManualRefresh] = useState(0);
+  const [killSafety, setKillSafety] = useState<KillProcessSafetyCheck | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -60,10 +62,14 @@ export function ProcessesScreen({ t, refreshToken }: { t: Dictionary; refreshTok
   function selectLiveProcess(process: ProcessInfo) {
     setSelected(null);
     setSelectedLive(process);
+    setKillSafety(null);
     loadProcessDetails(process.pid).then((result) => {
       const detailed = result.data.items[0];
       if (detailed) {
         setSelectedLive(detailed);
+        precheckKillProcess(detailed.pid).then(setKillSafety);
+      } else {
+        precheckKillProcess(process.pid).then(setKillSafety);
       }
     });
   }
@@ -170,7 +176,22 @@ export function ProcessesScreen({ t, refreshToken }: { t: Dictionary; refreshTok
                 </div>
               </dl>
               <div className="action-grid">
-                <ActionButton kind="kill_process" sourceScreen="processes" target={String(selectedLive.pid)} targetDisplayName={selectedLive.name} t={t}>
+                <ActionButton
+                  kind="kill_process"
+                  sourceScreen="processes"
+                  target={String(selectedLive.pid)}
+                  targetDisplayName={`${selectedLive.name} (PID ${selectedLive.pid})`}
+                  metadataJson={{
+                    pid: selectedLive.pid,
+                    process_name: selectedLive.name,
+                    process_path: selectedLive.path,
+                    command_line: selectedLive.command_line,
+                  }}
+                  disabled={!killSafety || !killSafety.allowed}
+                  disabledReason={killSafety?.reason ?? t.processes.killPrecheckPending}
+                  onCompleted={() => setManualRefresh((value) => value + 1)}
+                  t={t}
+                >
                   {t.disabledActions.killProcess}
                 </ActionButton>
                 <ActionButton
@@ -199,7 +220,15 @@ export function ProcessesScreen({ t, refreshToken }: { t: Dictionary; refreshTok
                 <SeverityBadge severity={selected.severity} t={t} />
               </div>
               <div className="action-grid">
-                <ActionButton kind="kill_process" sourceScreen="processes" target={String(selected.pid ?? "")} targetDisplayName={selected.name} t={t}>
+                <ActionButton
+                  kind="kill_process"
+                  sourceScreen="processes"
+                  target={String(selected.pid ?? "")}
+                  targetDisplayName={selected.name}
+                  disabled
+                  disabledReason={t.processes.liveBackendRequired}
+                  t={t}
+                >
                   {t.disabledActions.killProcess}
                 </ActionButton>
                 <ActionButton

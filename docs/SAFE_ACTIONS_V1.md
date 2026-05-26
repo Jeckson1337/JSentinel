@@ -2,6 +2,8 @@
 
 Package 4B enables the first real non-destructive actions. These actions are policy-gated, require confirmation, and are written to the local SQLite audit log.
 
+Package 4C adds `kill_process` separately as a controlled destructive action. It is not part of the safe-action set described here.
+
 ## Enabled Actions
 
 ### `reveal_path`

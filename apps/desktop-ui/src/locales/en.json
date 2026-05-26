@@ -191,7 +191,9 @@
     "limitationsLabel": "Limitations",
     "liveDescription": "The backend tries to read process inventory without changing process state.",
     "backendNotice": "Fallback details are derived from local mock/events only.",
-    "backendReadOnlyNotice": "This view is read-only. Kill, quarantine, and location actions are intentionally disabled.",
+    "backendReadOnlyNotice": "This view uses live read-only process data. Kill process is available only after backend safety precheck and confirmation; quarantine remains disabled.",
+    "killPrecheckPending": "Waiting for backend safety precheck.",
+    "liveBackendRequired": "Kill process requires live Windows backend verification and a PID.",
     "selectProcess": "Select a process"
   },
   "network": {
@@ -253,7 +255,7 @@
     "actionsDescription": "Disabling or restoring startup entries is intentionally unavailable in this package."
   },
   "disabledActions": {
-    "killProcess": "Kill process disabled",
+    "killProcess": "Kill process",
     "openLocation": "Open location disabled",
     "quarantine": "Quarantine disabled",
     "blockNetwork": "Block network disabled",
@@ -312,6 +314,7 @@
     "kind": "Action",
     "status": "Status",
     "target": "Target",
+    "displayName": "Display name",
     "timestamp": "Timestamp",
     "result": "Result",
     "noTarget": "No target"

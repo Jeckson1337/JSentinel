@@ -1,8 +1,10 @@
-#![forbid(unsafe_code)]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 use jsentinel_core::{
-    CapabilityStatus, FileLockerInfo, NetworkConnectionInfo, ProcessInfo, ReadOnlyBackendError,
-    ReadOnlyBackendErrorKind, ReadOnlyQueryResult, StartupEntryInfo, SystemPlatform,
+    evaluate_kill_process_safety, CapabilityStatus, FileLockerInfo, KillProcessSafetyCheck,
+    KillProcessTarget, NetworkConnectionInfo, ProcessInfo, ReadOnlyBackendError,
+    ReadOnlyBackendErrorKind, ReadOnlyQueryResult, SafeActionAdapter, SafeActionError,
+    StartupEntryInfo, SystemPlatform, ValidatedRevealPath,
 };
 use serde::Deserialize;
 
@@ -14,6 +16,7 @@ pub enum WindowsCapability {
     NetworkInventory,
     StartupInventory,
     EventCollection,
+    KillProcess,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,6 +37,7 @@ pub fn plan() -> WindowsBackendPlan {
             WindowsCapability::NetworkInventory,
             WindowsCapability::StartupInventory,
             WindowsCapability::EventCollection,
+            WindowsCapability::KillProcess,
         ],
     }
 }
@@ -76,7 +80,83 @@ pub fn system_capabilities() -> Vec<CapabilityStatus> {
             "Restart Manager based locker detection is planned; no handles are inspected or closed in this package.",
         )
         .with_data_source("not_implemented"),
+        CapabilityStatus::partial(
+            "kill_process",
+            "Kill process",
+            "Terminates one non-protected process by PID after confirmation and safety checks. No process tree kill.",
+        )
+        .with_data_source("OpenProcess/TerminateProcess"),
     ]
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct WindowsActionAdapter;
+
+impl SafeActionAdapter for WindowsActionAdapter {
+    fn reveal_path(&self, target: &ValidatedRevealPath) -> Result<(), SafeActionError> {
+        let adapter = jsentinel_core::DefaultSafeActionAdapter;
+        adapter.reveal_path(target)
+    }
+
+    fn open_windows_settings(&self, uri: &str) -> Result<(), SafeActionError> {
+        let adapter = jsentinel_core::DefaultSafeActionAdapter;
+        adapter.open_windows_settings(uri)
+    }
+
+    fn precheck_kill_process(&self, target: &KillProcessTarget) -> KillProcessSafetyCheck {
+        precheck_kill_process(target.pid)
+    }
+
+    fn kill_process(
+        &self,
+        target: &KillProcessTarget,
+    ) -> Result<KillProcessSafetyCheck, SafeActionError> {
+        kill_process(target.pid)
+    }
+}
+
+pub fn precheck_kill_process(pid: u32) -> KillProcessSafetyCheck {
+    #[cfg(windows)]
+    {
+        let details = get_process_details(pid);
+        let Some(process) = details.items.into_iter().next() else {
+            return KillProcessSafetyCheck::denied(format!(
+                "Process {pid} was not found or disappeared before precheck."
+            ));
+        };
+
+        let current_pid = std::process::id();
+        let current_parent_pid = current_process_parent_pid();
+        let target = kill_target_from_process(process);
+        evaluate_kill_process_safety(&target, current_pid, current_parent_pid)
+    }
+
+    #[cfg(not(windows))]
+    {
+        let _ = pid;
+        KillProcessSafetyCheck::denied("Kill process is unsupported on this platform.")
+    }
+}
+
+pub fn kill_process(pid: u32) -> Result<KillProcessSafetyCheck, SafeActionError> {
+    #[cfg(windows)]
+    {
+        let check = precheck_kill_process(pid);
+        if !check.allowed {
+            return Ok(check);
+        }
+
+        terminate_process_once(pid)?;
+        Ok(check)
+    }
+
+    #[cfg(not(windows))]
+    {
+        let _ = pid;
+        Err(SafeActionError::UnsupportedPlatform(
+            "Kill process is unsupported on this platform.".to_string(),
+        ))
+    }
 }
 
 pub fn list_processes() -> ReadOnlyQueryResult<ProcessInfo> {
@@ -248,6 +328,71 @@ pub fn detect_file_lockers(path: impl AsRef<str>) -> ReadOnlyQueryResult<FileLoc
     }
 }
 
+fn kill_target_from_process(process: ProcessInfo) -> KillProcessTarget {
+    KillProcessTarget {
+        pid: process.pid,
+        process_name: Some(process.name),
+        process_path: process.path,
+        command_line: process.command_line,
+    }
+}
+
+#[cfg(windows)]
+fn current_process_parent_pid() -> Option<u32> {
+    let current_pid = std::process::id();
+    list_processes()
+        .items
+        .into_iter()
+        .find(|process| process.pid == current_pid)
+        .and_then(|process| process.parent_pid)
+}
+
+#[cfg(windows)]
+fn terminate_process_once(pid: u32) -> Result<(), SafeActionError> {
+    use windows_sys::Win32::Foundation::{CloseHandle, GetLastError};
+    use windows_sys::Win32::System::Threading::{
+        OpenProcess, TerminateProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_TERMINATE,
+    };
+
+    // SAFETY: The PID was re-queried and safety-checked immediately before this call.
+    // We request only terminate/query rights, call TerminateProcess once, and close only
+    // the handle returned by OpenProcess. No process tree, retry loop, or handle unlock is used.
+    let handle = unsafe {
+        OpenProcess(
+            PROCESS_TERMINATE | PROCESS_QUERY_LIMITED_INFORMATION,
+            0,
+            pid,
+        )
+    };
+    if handle.is_null() {
+        return Err(SafeActionError::OsError(format!(
+            "OpenProcess failed for PID {pid}: Windows error {}",
+            unsafe { GetLastError() }
+        )));
+    }
+
+    // SAFETY: `handle` is a valid process handle returned by OpenProcess above.
+    let terminate_result = unsafe { TerminateProcess(handle, 1) };
+    let last_error = if terminate_result == 0 {
+        // SAFETY: GetLastError reads thread-local OS error state.
+        Some(unsafe { GetLastError() })
+    } else {
+        None
+    };
+    // SAFETY: `handle` is closed exactly once by this function.
+    unsafe {
+        CloseHandle(handle);
+    }
+
+    if let Some(error) = last_error {
+        Err(SafeActionError::OsError(format!(
+            "TerminateProcess failed for PID {pid}: Windows error {error}"
+        )))
+    } else {
+        Ok(())
+    }
+}
+
 #[cfg(windows)]
 const PROCESS_QUERY: &str = r#"
 $ErrorActionPreference = 'SilentlyContinue'
@@ -346,6 +491,7 @@ fn unsupported_capabilities(limitation: &str) -> Vec<CapabilityStatus> {
         CapabilityStatus::unsupported("network_connections", "Network connections", limitation),
         CapabilityStatus::unsupported("startup_entries", "Startup entries", limitation),
         CapabilityStatus::unsupported("file_lockers", "File locker detection", limitation),
+        CapabilityStatus::unsupported("kill_process", "Kill process", limitation),
     ]
 }
 
@@ -516,7 +662,7 @@ struct RawStartupEntry {
 mod tests {
     use super::{
         classify_backend_error, detect_file_lockers, parse_network_connections, parse_processes,
-        parse_startup_entries, system_capabilities,
+        parse_startup_entries, precheck_kill_process, system_capabilities,
     };
     use jsentinel_core::{CapabilitySupportStatus, ReadOnlyBackendErrorKind};
     use serde_json::json;
@@ -606,6 +752,14 @@ mod tests {
         let error = classify_backend_error("Access is denied");
 
         assert_eq!(error.kind, ReadOnlyBackendErrorKind::PermissionDenied);
+    }
+
+    #[test]
+    fn kill_precheck_denies_pid_zero() {
+        let check = precheck_kill_process(0);
+
+        assert!(!check.allowed);
+        assert!(check.reason.is_some());
     }
 
     #[cfg(not(windows))]

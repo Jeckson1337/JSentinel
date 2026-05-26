@@ -4,6 +4,7 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 $actionsFile = Join-Path $repoRoot "crates\jsentinel-core\src\actions.rs"
+$windowsFile = Join-Path $repoRoot "crates\jsentinel-windows\src\lib.rs"
 
 Write-Host "Safe actions check: $actionsFile"
 
@@ -13,6 +14,7 @@ if (-not (Test-Path $actionsFile)) {
 }
 
 $content = Get-Content $actionsFile -Raw
+$windowsContent = if (Test-Path $windowsFile) { Get-Content $windowsFile -Raw } else { "" }
 $errors = @()
 
 foreach ($pattern in @(
@@ -23,7 +25,26 @@ foreach ($pattern in @(
     'cmd.exe /C'
 )) {
     if ($content -match $pattern) {
-        $errors += "Forbidden command execution pattern found: $pattern"
+        $errors += "Forbidden command execution pattern found in safe action executor: $pattern"
+    }
+}
+
+foreach ($pattern in @(
+    'taskkill',
+    'Stop-Process'
+)) {
+    if (($content -match $pattern) -or ($windowsContent -match $pattern)) {
+        $errors += "Forbidden process termination command pattern found: $pattern"
+    }
+}
+
+foreach ($required in @(
+    'TerminateProcess',
+    'OpenProcess',
+    'precheck_kill_process'
+)) {
+    if (-not $windowsContent.Contains($required)) {
+        $errors += "Expected kill-process guard/API not found: $required"
     }
 }
 

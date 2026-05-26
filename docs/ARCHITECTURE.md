@@ -51,7 +51,9 @@ Package 3.5 hardens this layer with structured capability status, serialized rea
 
 Package 4A adds action DTOs, policy planning, confirmation UI, and a local SQLite audit log. The action boundary is data-first: UI creates an `ActionRequest`, `jsentinel-policy` returns an `ActionPlan`, the UI shows confirmation or a disabled reason, and only the backend command path can record an `ActionResult`.
 
-Package 4B adds the first safe executor for `reveal_path` and allowlisted `open_windows_settings`. The executor lives behind the backend boundary in `jsentinel-core`, uses validation before OS calls, and records local audit results. Dangerous actions remain planned/disabled. No process kill, firewall change, registry write, startup mutation, quarantine, delete-on-reboot, or force unlock is implemented.
+Package 4B adds the first safe executor for `reveal_path` and allowlisted `open_windows_settings`. The executor lives behind the backend boundary in `jsentinel-core`, uses validation before OS calls, and records local audit results.
+
+Package 4C adds the first controlled destructive action: `kill_process` for one non-protected process by PID only. It must pass policy, live Windows backend precheck, explicit confirmation, and local audit logging. It does not kill by name, kill process trees, retry, escalate privileges, delete files, change startup entries, modify firewall rules, quarantine files, or unlock handles.
 
 ## Privilege Model
 
@@ -72,7 +74,7 @@ Windows 10/11 is the first primary platform. Linux backend crates and daemon pla
 
 - No kernel driver.
 - No force-delete.
-- No kill-process action.
+- No kill by name, process tree kill, or automatic kill action.
 - No firewall/block action.
 - No delete-on-reboot action.
 - No direct registry mutation.

@@ -2,7 +2,7 @@
 
 Tauri + React + TypeScript scaffold for the JSentinel desktop application.
 
-This is a UI shell only. It does not execute privileged actions, access OS permissions, read system registries, kill processes, block network traffic, quarantine files, or make network requests.
+This UI routes actions through the Tauri/backend policy boundary. It does not directly execute privileged actions, read system registries, block network traffic, quarantine files, or make network requests. Package 4C enables only confirmed single-PID process termination through the backend action framework.
 
 ## Manual Setup
 

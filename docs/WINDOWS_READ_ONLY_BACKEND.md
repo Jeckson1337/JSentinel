@@ -20,7 +20,7 @@ Scheduled task parsing is not implemented yet.
 
 File locker detection is represented as an explicit contract, but Package 3 returns `unsupported`.
 
-The project does not yet use Restart Manager, inspect open handles, close handles, unlock files, kill processes, or schedule delete-on-reboot.
+The read-only snapshot backend does not use Restart Manager, inspect open handles, close handles, unlock files, or schedule delete-on-reboot. Package 4C adds a separate action-layer `kill_process` path for one PID after policy, safety precheck, confirmation, and audit; it is not part of snapshot collection.
 
 ## Capabilities And Limitations
 
@@ -57,9 +57,8 @@ Refresh controls repeat the same read-only snapshot queries. Refresh does not mo
 
 ## What Is Not Implemented
 
-Package 3 does not implement:
+The read-only backend does not implement:
 
-- process kill;
 - firewall rules or network blocking;
 - registry writes;
 - startup disable/restore;
@@ -79,4 +78,4 @@ The desktop UI tries the Tauri read-only commands first. If the commands are una
 - Demo/mock fallback;
 - Unsupported platform.
 
-All potentially dangerous actions remain disabled.
+Potentially dangerous actions remain policy-gated. Package 4C enables only guarded single-PID process termination from process context; firewall, startup, quarantine, delete, and unlock actions remain disabled/planned.

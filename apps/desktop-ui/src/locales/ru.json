@@ -191,7 +191,9 @@
     "limitationsLabel": "Ограничения",
     "liveDescription": "Backend пытается читать inventory процессов без изменения их состояния.",
     "backendNotice": "Fallback details собраны только из mock/local events.",
-    "backendReadOnlyNotice": "Этот экран read-only. Kill, quarantine и location actions намеренно отключены.",
+    "backendReadOnlyNotice": "Экран использует live read-only process data. Kill process доступен только после backend safety precheck и confirmation; quarantine остаётся отключён.",
+    "killPrecheckPending": "Ожидание backend safety precheck.",
+    "liveBackendRequired": "Kill process требует live Windows backend verification и PID.",
     "selectProcess": "Выберите процесс"
   },
   "network": {
@@ -253,7 +255,7 @@
     "actionsDescription": "Disable/restore startup entries намеренно недоступны в этом пакете."
   },
   "disabledActions": {
-    "killProcess": "Kill process disabled",
+    "killProcess": "Завершить процесс",
     "openLocation": "Open location disabled",
     "quarantine": "Quarantine disabled",
     "blockNetwork": "Block network disabled",
@@ -312,6 +314,7 @@
     "kind": "Action",
     "status": "Status",
     "target": "Target",
+    "displayName": "Display name",
     "timestamp": "Время",
     "result": "Result",
     "noTarget": "Нет target"

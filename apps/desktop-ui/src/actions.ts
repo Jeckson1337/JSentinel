@@ -66,6 +66,14 @@ export type ActionHistoryQuery = {
   limit?: number | null;
 };
 
+export type KillProcessSafetyCheck = {
+  allowed: boolean;
+  reason?: string | null;
+  risk_level: ActionRiskLevel;
+  requires_confirmation: boolean;
+  protected_reason?: string | null;
+};
+
 export function createActionRequest(
   kind: ActionKind,
   target: string,
@@ -137,5 +145,19 @@ export async function loadActionHistory(query: ActionHistoryQuery): Promise<Acti
     return await invoke<ActionResult[]>("jsentinel_list_action_history", { query });
   } catch {
     return [];
+  }
+}
+
+export async function precheckKillProcess(pid: number): Promise<KillProcessSafetyCheck> {
+  try {
+    return await invoke<KillProcessSafetyCheck>("jsentinel_precheck_kill_process", { pid });
+  } catch (error) {
+    return {
+      allowed: false,
+      reason: String(error),
+      risk_level: "dangerous",
+      requires_confirmation: true,
+      protected_reason: String(error),
+    };
   }
 }

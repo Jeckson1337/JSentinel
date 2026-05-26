@@ -42,6 +42,10 @@ export function ConfirmationDialog({
         </div>
         <dl className="details-list">
           <div>
+            <dt>{t.actions.displayName}</dt>
+            <dd>{plan.request.target_display_name}</dd>
+          </div>
+          <div>
             <dt>{t.actions.target}</dt>
             <dd>{plan.request.target || t.actions.noTarget}</dd>
           </div>
