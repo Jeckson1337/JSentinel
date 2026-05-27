@@ -479,22 +479,25 @@ impl PolicyEngine {
                     "This package only prepares the plan and backup model.".to_string(),
                 ],
             ),
-            ActionKind::RestoreStartup => startup_action_plan(
-                request,
-                STARTUP_RESTORE_PLANNED_REASON,
-                false,
-                request_has_startup_backup_available(&request),
-                vec![
-                    "Would use a local startup backup record in a later package.".to_string(),
-                    "Would restore one startup entry if a matching backup is available.".to_string(),
-                    "Package 4D does not write the registry, modify services, or change scheduled tasks."
-                        .to_string(),
-                ],
-                vec![
-                    "Restore requires a trusted backup record from before the disable action.".to_string(),
-                    "This package only previews the restore plan.".to_string(),
-                ],
-            ),
+            ActionKind::RestoreStartup => {
+                let backup_available = request_has_startup_backup_available(&request);
+                startup_action_plan(
+                    request,
+                    STARTUP_RESTORE_PLANNED_REASON,
+                    false,
+                    backup_available,
+                    vec![
+                        "Would use a local startup backup record in a later package.".to_string(),
+                        "Would restore one startup entry if a matching backup is available.".to_string(),
+                        "Package 4D does not write the registry, modify services, or change scheduled tasks."
+                            .to_string(),
+                    ],
+                    vec![
+                        "Restore requires a trusted backup record from before the disable action.".to_string(),
+                        "This package only previews the restore plan.".to_string(),
+                    ],
+                )
+            }
             ActionKind::DetectFileLockers => planned_plan(
                 request,
                 ActionAvailability::Unsupported,
