@@ -244,6 +244,8 @@
     "state": "State",
     "scope": "Scope",
     "risk": "Risk",
+    "backup": "Backup",
+    "actions": "Actions",
     "timestamp": "Время",
     "severity": "Важность",
     "enabled": "Enabled",
@@ -252,7 +254,17 @@
     "liveDescription": "Backend читает Registry Run keys и Startup folders без изменения данных.",
     "noStartupEvents": "Startup events пока нет",
     "actionsTitle": "Startup actions placeholder",
-    "actionsDescription": "Disable/restore startup entries намеренно недоступны в этом пакете."
+    "actionsDescription": "Disable/restore startup entries намеренно недоступны в этом пакете.",
+    "backupAvailable": "Backup подготовлен",
+    "noBackup": "Backup отсутствует",
+    "backupRequired": "Для restore нужен локальный startup backup record.",
+    "mockActionsUnavailable": "Нужен live startup backend",
+    "readinessTitle": "Startup Guard readiness",
+    "readinessDescription": "Package 4D готовит только backup metadata и planning. Startup entries не изменяются.",
+    "readOnlyEntries": "Read-only entries",
+    "backupRecords": "Backup records",
+    "registryWrites": "Registry writes",
+    "noRegistryWrites": "Registry writes, startup-folder edits, scheduled task changes, service changes, deletion и auto-disable не реализованы."
   },
   "disabledActions": {
     "killProcess": "Завершить процесс",

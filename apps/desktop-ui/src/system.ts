@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import type { ActionKind, ActionRiskLevel } from "./actions";
 
 export type SystemPlatform = "windows" | "linux" | "unsupported";
 export type CapabilitySupportStatus = "supported" | "partial" | "unsupported";
@@ -70,6 +71,49 @@ export type StartupEntryInfo = {
   publisher?: string | null;
   risk?: string | null;
   limitation?: string | null;
+};
+
+export type StartupEntryTarget = {
+  entry_id: string;
+  name: string;
+  source: string;
+  scope: string;
+  command?: string | null;
+  path?: string | null;
+  enabled?: boolean | null;
+  original_location?: string | null;
+  metadata_json?: Record<string, unknown> | null;
+};
+
+export type StartupBackupRecord = {
+  backup_id: string;
+  entry_id: string;
+  created_at: string;
+  source: string;
+  original_name: string;
+  original_command: string;
+  original_path?: string | null;
+  original_enabled_state: string;
+  restore_strategy: string;
+  metadata_json?: Record<string, unknown> | null;
+};
+
+export type StartupBackupQuery = {
+  entry_id?: string | null;
+  source?: string | null;
+  limit?: number | null;
+};
+
+export type StartupActionPlan = {
+  action_kind: ActionKind;
+  target: StartupEntryTarget;
+  risk_level: ActionRiskLevel;
+  requires_confirmation: boolean;
+  backup_required: boolean;
+  backup_available: boolean;
+  expected_effects: string[];
+  warnings: string[];
+  disabled_reason?: string | null;
 };
 
 export type FileLockerInfo = {
@@ -149,6 +193,48 @@ export async function loadStartupEntries(): Promise<
     id: "startup_entries",
     label: "Startup entries",
   });
+}
+
+export async function planStartupAction(
+  target: StartupEntryTarget,
+  actionKind: Extract<ActionKind, "disable_startup" | "restore_startup">,
+): Promise<StartupActionPlan> {
+  try {
+    return await invoke<StartupActionPlan>("jsentinel_plan_startup_action", {
+      target,
+      actionKind,
+    });
+  } catch (error) {
+    return {
+      action_kind: actionKind,
+      target,
+      risk_level: "caution",
+      requires_confirmation: true,
+      backup_required: actionKind === "disable_startup",
+      backup_available: false,
+      expected_effects: ["No startup action was executed."],
+      warnings: [String(error)],
+      disabled_reason: String(error),
+    };
+  }
+}
+
+export async function loadStartupBackups(
+  query: StartupBackupQuery = { limit: 100 },
+): Promise<StartupBackupRecord[]> {
+  try {
+    return await invoke<StartupBackupRecord[]>("jsentinel_list_startup_backups", { query });
+  } catch {
+    return [];
+  }
+}
+
+export async function loadStartupBackup(backupId: string): Promise<StartupBackupRecord | null> {
+  try {
+    return await invoke<StartupBackupRecord | null>("jsentinel_get_startup_backup", { backupId });
+  } catch {
+    return null;
+  }
 }
 
 export async function detectFileLockers(

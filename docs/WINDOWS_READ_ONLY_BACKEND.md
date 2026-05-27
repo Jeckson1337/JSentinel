@@ -16,6 +16,8 @@ Package 3 introduces the first Windows backend surface for JSentinel. It is inte
 
 Scheduled task parsing is not implemented yet.
 
+Package 4D adds local backup metadata and planning DTOs for future Startup Guard actions, but this backend remains read-only for startup sources.
+
 ## Best-Effort / Unsupported
 
 File locker detection is represented as an explicit contract, but Package 3 returns `unsupported`.
@@ -79,3 +81,5 @@ The desktop UI tries the Tauri read-only commands first. If the commands are una
 - Unsupported platform.
 
 Potentially dangerous actions remain policy-gated. Package 4C enables only guarded single-PID process termination from process context; firewall, startup, quarantine, delete, and unlock actions remain disabled/planned.
+
+Startup Guard buttons may show planned/disabled state and backup availability. They do not write registry values, edit Startup folders, modify Scheduled Tasks, modify Services, or auto-disable entries.

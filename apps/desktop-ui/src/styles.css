@@ -563,6 +563,11 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 
+.inline-actions {
+  display: grid;
+  gap: 6px;
+}
+
 .data-row-head {
   color: #93a29a;
   font-size: 12px;

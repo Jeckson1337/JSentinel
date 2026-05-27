@@ -11,6 +11,10 @@ static ACTION_ID_COUNTER: AtomicU64 = AtomicU64::new(1);
 
 const FUTURE_ACTION_REASON: &str =
     "Action framework is prepared, implementation will come in a later package.";
+const STARTUP_DISABLE_PLANNED_REASON: &str =
+    "Startup disable is planned but not implemented in Package 4D.";
+const STARTUP_RESTORE_PLANNED_REASON: &str =
+    "Startup restore is planned but not implemented in Package 4D.";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ActionRisk {
@@ -273,6 +277,63 @@ pub struct ActionPlan {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct StartupEntryTarget {
+    pub entry_id: String,
+    pub name: String,
+    pub source: String,
+    pub scope: String,
+    pub command: Option<String>,
+    pub path: Option<String>,
+    pub enabled: Option<bool>,
+    pub original_location: Option<String>,
+    pub metadata_json: Option<Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct StartupBackupRecord {
+    pub backup_id: String,
+    pub entry_id: String,
+    pub created_at: String,
+    pub source: String,
+    pub original_name: String,
+    pub original_command: String,
+    pub original_path: Option<String>,
+    pub original_enabled_state: String,
+    pub restore_strategy: String,
+    pub metadata_json: Option<Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StartupBackupQuery {
+    pub entry_id: Option<String>,
+    pub source: Option<String>,
+    pub limit: Option<u32>,
+}
+
+impl Default for StartupBackupQuery {
+    fn default() -> Self {
+        Self {
+            entry_id: None,
+            source: None,
+            limit: Some(50),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct StartupActionPlan {
+    pub action_kind: ActionKind,
+    pub target: StartupEntryTarget,
+    pub risk_level: ActionRiskLevel,
+    pub requires_confirmation: bool,
+    pub backup_required: bool,
+    pub backup_available: bool,
+    pub expected_effects: Vec<String>,
+    pub warnings: Vec<String>,
+    pub disabled_reason: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ActionResult {
     pub request_id: String,
     pub kind: ActionKind,
@@ -402,6 +463,38 @@ impl PolicyEngine {
                     ],
                 }
             }
+            ActionKind::DisableStartup => startup_action_plan(
+                request,
+                STARTUP_DISABLE_PLANNED_REASON,
+                true,
+                false,
+                vec![
+                    "Would create local backup metadata before any future disable.".to_string(),
+                    "Would mark one startup entry as disabled in a later package.".to_string(),
+                    "Package 4D does not write the registry, modify services, or change scheduled tasks."
+                        .to_string(),
+                ],
+                vec![
+                    "Startup changes can affect app launch behavior after sign-in.".to_string(),
+                    "This package only prepares the plan and backup model.".to_string(),
+                ],
+            ),
+            ActionKind::RestoreStartup => startup_action_plan(
+                request,
+                STARTUP_RESTORE_PLANNED_REASON,
+                false,
+                request_has_startup_backup_available(&request),
+                vec![
+                    "Would use a local startup backup record in a later package.".to_string(),
+                    "Would restore one startup entry if a matching backup is available.".to_string(),
+                    "Package 4D does not write the registry, modify services, or change scheduled tasks."
+                        .to_string(),
+                ],
+                vec![
+                    "Restore requires a trusted backup record from before the disable action.".to_string(),
+                    "This package only previews the restore plan.".to_string(),
+                ],
+            ),
             ActionKind::DetectFileLockers => planned_plan(
                 request,
                 ActionAvailability::Unsupported,
@@ -414,15 +507,72 @@ impl PolicyEngine {
     pub fn classify_risk(kind: ActionKind) -> ActionRiskLevel {
         match kind {
             ActionKind::RevealPath | ActionKind::OpenWindowsSettings => ActionRiskLevel::Safe,
-            ActionKind::DetectFileLockers => ActionRiskLevel::Caution,
+            ActionKind::DetectFileLockers
+            | ActionKind::DisableStartup
+            | ActionKind::RestoreStartup => ActionRiskLevel::Caution,
             ActionKind::KillProcess
             | ActionKind::BlockNetwork
             | ActionKind::UnblockNetwork
-            | ActionKind::DisableStartup
-            | ActionKind::RestoreStartup
             | ActionKind::QuarantineFile
             | ActionKind::RestoreQuarantine
             | ActionKind::ScheduleDeleteOnReboot => ActionRiskLevel::Dangerous,
+        }
+    }
+
+    pub fn plan_startup_action(
+        target: StartupEntryTarget,
+        action_kind: ActionKind,
+        backup_available: bool,
+    ) -> StartupActionPlan {
+        let risk_level = Self::classify_risk(action_kind);
+        match action_kind {
+            ActionKind::DisableStartup => StartupActionPlan {
+                action_kind,
+                target,
+                risk_level,
+                requires_confirmation: true,
+                backup_required: true,
+                backup_available,
+                expected_effects: vec![
+                    "Would prepare backup metadata before a future disable.".to_string(),
+                    "Would disable one startup entry only in a later implementation package."
+                        .to_string(),
+                ],
+                warnings: vec![
+                    STARTUP_DISABLE_PLANNED_REASON.to_string(),
+                    "No registry, scheduled task, service, or startup folder modification is performed."
+                        .to_string(),
+                ],
+                disabled_reason: Some(STARTUP_DISABLE_PLANNED_REASON.to_string()),
+            },
+            ActionKind::RestoreStartup => StartupActionPlan {
+                action_kind,
+                target,
+                risk_level,
+                requires_confirmation: true,
+                backup_required: false,
+                backup_available,
+                expected_effects: vec![
+                    "Would restore one startup entry from local backup metadata in a later package."
+                        .to_string(),
+                ],
+                warnings: vec![
+                    STARTUP_RESTORE_PLANNED_REASON.to_string(),
+                    "Restore requires a matching trusted backup record.".to_string(),
+                ],
+                disabled_reason: Some(STARTUP_RESTORE_PLANNED_REASON.to_string()),
+            },
+            _ => StartupActionPlan {
+                action_kind,
+                target,
+                risk_level,
+                requires_confirmation: false,
+                backup_required: false,
+                backup_available,
+                expected_effects: vec!["No startup action will be executed.".to_string()],
+                warnings: vec!["Unsupported startup action kind.".to_string()],
+                disabled_reason: Some("Unsupported startup action kind.".to_string()),
+            },
         }
     }
 
@@ -442,6 +592,48 @@ fn request_has_pid_metadata(request: &ActionRequest) -> bool {
         .and_then(Value::as_u64)
         .and_then(|value| u32::try_from(value).ok())
         .is_some()
+}
+
+fn request_has_startup_backup_available(request: &ActionRequest) -> bool {
+    request
+        .metadata_json
+        .as_ref()
+        .and_then(|metadata| metadata.get("backup_available"))
+        .and_then(Value::as_bool)
+        .unwrap_or(false)
+}
+
+fn startup_action_plan(
+    request: ActionRequest,
+    reason: &str,
+    backup_required: bool,
+    backup_available: bool,
+    expected_effects: Vec<String>,
+    warnings: Vec<String>,
+) -> ActionPlan {
+    let mut request = request;
+    let mut metadata = request
+        .metadata_json
+        .take()
+        .unwrap_or_else(|| Value::Object(serde_json::Map::new()));
+    if let Value::Object(object) = &mut metadata {
+        object.insert("backup_required".to_string(), Value::Bool(backup_required));
+        object.insert("backup_available".to_string(), Value::Bool(backup_available));
+    }
+    request.metadata_json = Some(metadata);
+
+    ActionPlan {
+        confirmation_title: "Startup Guard action planned".to_string(),
+        confirmation_message: reason.to_string(),
+        request,
+        availability: ActionAvailability::Planned,
+        requires_confirmation: true,
+        irreversible: false,
+        can_undo: false,
+        disabled_reason: Some(reason.to_string()),
+        expected_effects,
+        warnings,
+    }
 }
 
 fn planned_plan(
@@ -577,5 +769,79 @@ mod tests {
         assert!(plan.requires_confirmation);
         assert!(plan.irreversible);
         assert!(!plan.can_undo);
+    }
+
+    #[test]
+    fn startup_backup_record_serializes() {
+        let record = StartupBackupRecord {
+            backup_id: "backup-1".to_string(),
+            entry_id: "entry-1".to_string(),
+            created_at: "unix:1".to_string(),
+            source: "HKCU Run".to_string(),
+            original_name: "Demo".to_string(),
+            original_command: "demo.exe".to_string(),
+            original_path: Some("C:\\Demo\\demo.exe".to_string()),
+            original_enabled_state: "enabled".to_string(),
+            restore_strategy: "restore_run_value".to_string(),
+            metadata_json: Some(serde_json::json!({ "planned_only": true })),
+        };
+
+        let encoded = serde_json::to_string(&record).expect("record serializes");
+        let decoded: StartupBackupRecord =
+            serde_json::from_str(&encoded).expect("record deserializes");
+
+        assert_eq!(decoded, record);
+    }
+
+    #[test]
+    fn startup_actions_are_caution_and_planned() {
+        let disable_request =
+            ActionRequest::new(ActionKind::DisableStartup, "entry-1", "Demo", "startup");
+        let restore_request =
+            ActionRequest::new(ActionKind::RestoreStartup, "entry-1", "Demo", "startup");
+        let disable_plan = PolicyEngine::plan_action(disable_request);
+        let restore_plan = PolicyEngine::plan_action(restore_request);
+
+        assert_eq!(disable_plan.request.risk_level, ActionRiskLevel::Caution);
+        assert_eq!(restore_plan.request.risk_level, ActionRiskLevel::Caution);
+        assert_eq!(disable_plan.availability, ActionAvailability::Planned);
+        assert_eq!(restore_plan.availability, ActionAvailability::Planned);
+        assert!(disable_plan.requires_confirmation);
+        assert!(restore_plan.requires_confirmation);
+        assert!(disable_plan.disabled_reason.is_some());
+        assert!(restore_plan.disabled_reason.is_some());
+    }
+
+    #[test]
+    fn startup_specific_plan_tracks_backup_requirements() {
+        let target = StartupEntryTarget {
+            entry_id: "entry-1".to_string(),
+            name: "Demo".to_string(),
+            source: "HKCU Run".to_string(),
+            scope: "CurrentUser".to_string(),
+            command: Some("demo.exe".to_string()),
+            path: Some("C:\\Demo\\demo.exe".to_string()),
+            enabled: Some(true),
+            original_location: Some("HKCU Run".to_string()),
+            metadata_json: None,
+        };
+
+        let disable = PolicyEngine::plan_startup_action(
+            target.clone(),
+            ActionKind::DisableStartup,
+            false,
+        );
+        let restore = PolicyEngine::plan_startup_action(
+            target,
+            ActionKind::RestoreStartup,
+            true,
+        );
+
+        assert!(disable.backup_required);
+        assert!(!disable.backup_available);
+        assert!(!restore.backup_required);
+        assert!(restore.backup_available);
+        assert!(disable.disabled_reason.is_some());
+        assert!(restore.disabled_reason.is_some());
     }
 }

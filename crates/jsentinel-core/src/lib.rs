@@ -13,7 +13,7 @@ pub use actions::{
 
 use jsentinel_db::{init_db, DashboardSummary, Database, DbResult, EventQuery};
 use jsentinel_events::{mock_demo_events, AccessEvent, EventId};
-use jsentinel_policy::{ActionHistoryQuery, ActionResult};
+use jsentinel_policy::{ActionHistoryQuery, ActionResult, StartupBackupQuery, StartupBackupRecord};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -99,6 +99,28 @@ impl EventService {
 
     pub fn get_action_history(&self, id: &str) -> DbResult<Option<ActionResult>> {
         self.database.get_action_history(id)
+    }
+
+    pub fn insert_startup_backup(&self, record: &StartupBackupRecord) -> DbResult<()> {
+        self.database.insert_startup_backup(record)
+    }
+
+    pub fn list_startup_backups(
+        &self,
+        query: StartupBackupQuery,
+    ) -> DbResult<Vec<StartupBackupRecord>> {
+        self.database.list_startup_backups(query)
+    }
+
+    pub fn get_startup_backup(&self, backup_id: &str) -> DbResult<Option<StartupBackupRecord>> {
+        self.database.get_startup_backup(backup_id)
+    }
+
+    pub fn find_startup_backup_by_entry(
+        &self,
+        entry_id: &str,
+    ) -> DbResult<Option<StartupBackupRecord>> {
+        self.database.find_startup_backup_by_entry(entry_id)
     }
 }
 

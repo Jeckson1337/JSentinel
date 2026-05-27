@@ -45,7 +45,7 @@ This path is relative to the Tauri process working directory. It avoids system d
 
 ### action_history
 
-Prepared for future audit records only:
+Local action audit records:
 
 - `id TEXT PRIMARY KEY`
 - `timestamp TEXT NOT NULL`
@@ -54,8 +54,27 @@ Prepared for future audit records only:
 - `risk_level TEXT NOT NULL`
 - `result TEXT NOT NULL`
 - `error TEXT NULL`
+- `message TEXT NULL`
+- `started_at TEXT NULL`
+- `finished_at TEXT NULL`
+- `metadata_json TEXT NULL`
 
-Package 1 does not implement actions.
+### startup_backups
+
+Prepared in Package 4D for future Startup Guard restore planning only:
+
+- `backup_id TEXT PRIMARY KEY`
+- `entry_id TEXT NOT NULL`
+- `created_at TEXT NOT NULL`
+- `source TEXT NOT NULL`
+- `original_name TEXT NOT NULL`
+- `original_command TEXT NOT NULL`
+- `original_path TEXT NULL`
+- `original_enabled_state TEXT NOT NULL`
+- `restore_strategy TEXT NOT NULL`
+- `metadata_json TEXT NULL`
+
+Package 4D stores metadata only. It does not disable, restore, delete, or modify startup entries.
 
 ## Repository Functions
 
@@ -66,6 +85,13 @@ Package 1 does not implement actions.
 - `seed_mock_events()`
 - `count_events()`
 - `dashboard_summary()`
+- `insert_action_history(result)`
+- `list_action_history(query)`
+- `get_action_history(id)`
+- `insert_startup_backup(record)`
+- `list_startup_backups(query)`
+- `get_startup_backup(backup_id)`
+- `find_startup_backup_by_entry(entry_id)`
 
 `EventQuery` supports optional kind filter, optional severity filter, text search over title/summary/process/target, limit, and newest-first ordering.
 

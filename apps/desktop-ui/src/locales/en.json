@@ -244,6 +244,8 @@
     "state": "State",
     "scope": "Scope",
     "risk": "Risk",
+    "backup": "Backup",
+    "actions": "Actions",
     "timestamp": "Timestamp",
     "severity": "Severity",
     "enabled": "Enabled",
@@ -252,7 +254,17 @@
     "liveDescription": "The backend reads Registry Run keys and Startup folders without changing them.",
     "noStartupEvents": "No startup events yet",
     "actionsTitle": "Startup actions placeholder",
-    "actionsDescription": "Disabling or restoring startup entries is intentionally unavailable in this package."
+    "actionsDescription": "Disabling or restoring startup entries is intentionally unavailable in this package.",
+    "backupAvailable": "Backup prepared",
+    "noBackup": "No backup",
+    "backupRequired": "A local startup backup record is required before restore can be planned.",
+    "mockActionsUnavailable": "Live startup backend required",
+    "readinessTitle": "Startup Guard readiness",
+    "readinessDescription": "Package 4D prepares backup metadata and planning only. It does not change startup entries.",
+    "readOnlyEntries": "Read-only entries",
+    "backupRecords": "Backup records",
+    "registryWrites": "Registry writes",
+    "noRegistryWrites": "No registry writes, startup-folder edits, scheduled task changes, service changes, deletion, or auto-disable are implemented."
   },
   "disabledActions": {
     "killProcess": "Kill process",

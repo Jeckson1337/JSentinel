@@ -17,6 +17,8 @@
 - Open existing local filesystem paths in Windows Explorer after confirmation.
 - Open allowlisted Windows Settings pages after confirmation.
 - Terminate one non-protected, non-system process by PID after confirmation, live backend verification, and safety checks.
+- Store local Startup Guard backup metadata for future restore planning.
+- Show planned/disabled startup disable/restore previews without changing the OS.
 
 ## Cannot Do Yet
 
@@ -32,6 +34,9 @@
 - Block network access.
 - Modify firewall rules.
 - Write the Windows registry.
+- Disable or restore startup entries.
+- Modify scheduled tasks or services.
+- Delete startup entries.
 - Install services or daemons.
 - Execute destructive actions other than the Package 4C single-PID kill action.
 - Run automatic mitigation in the background.

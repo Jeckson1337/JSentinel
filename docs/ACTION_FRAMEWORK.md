@@ -16,13 +16,15 @@ All DTOs are serializable so Rust, Tauri, SQLite, and the UI can share one contr
 
 ## Policy
 
-`jsentinel-policy` owns risk classification and action planning. In Package 4B the policy is intentionally strict:
+`jsentinel-policy` owns risk classification and action planning. In the current Package 4D policy:
 
 - `reveal_path`: safe, available, confirmation-gated, local filesystem only.
 - `open_windows_settings`: safe, available, confirmation-gated, Windows Settings URI allowlist only.
 - `kill_process`: dangerous, available only with PID metadata, confirmation-gated, and safety-prechecked.
+- `disable_startup`: caution, planned/disabled, confirmation text prepared, backup required in the future.
+- `restore_startup`: caution, planned/disabled, confirmation text prepared, backup required in the future.
 - `detect_file_lockers`: caution, unsupported/planned.
-- `block_network`, `unblock_network`, `disable_startup`, `restore_startup`, `quarantine_file`, `restore_quarantine`, and `schedule_delete_on_reboot`: dangerous and planned/disabled.
+- `block_network`, `unblock_network`, `quarantine_file`, `restore_quarantine`, and `schedule_delete_on_reboot`: dangerous and planned/disabled.
 
 Dangerous actions return a disabled reason: the framework is prepared, but implementation belongs to a later package.
 
@@ -34,6 +36,8 @@ Package 4B.5 hardens this path by rejecting URL-like path targets, shell-like sc
 
 Package 4C adds `kill_process` for one PID only. It re-plans the request in the backend, requires confirmation, denies protected/system/self targets, and writes every attempt to local action history.
 
+Package 4D adds Startup Guard planning DTOs and local backup metadata storage. It does not execute startup disable/restore and does not write the registry, edit Startup folders, modify scheduled tasks, or modify services.
+
 ## Audit Log
 
 Action results are stored locally in SQLite `action_history`. The log supports filtering by action kind, status, text search, limit, and newest-first ordering.
@@ -42,7 +46,7 @@ The audit log is local-only. There is no upload, telemetry, account, or external
 
 ## Explicit Non-Goals
 
-Package 4C does not implement:
+Package 4D does not implement:
 
 - firewall block/unblock;
 - startup disable/restore;

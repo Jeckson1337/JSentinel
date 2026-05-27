@@ -16,6 +16,8 @@ Currently enabled safe actions are revealing an existing local path in Windows E
 
 Package 4C adds a controlled Kill Process action. It can terminate one non-protected process by PID after confirmation and live backend safety checks. Unsaved work in that process may be lost. JSentinel refuses its own process, system/protected names, Windows-directory targets, missing verified details, process trees, and name-only kills.
 
+Package 4D prepares Startup Guard action planning and local backup metadata. The Startup screen can show whether backup metadata exists and why disable/restore are still planned, but it does not change startup entries.
+
 Other dangerous actions are not implemented. JSentinel does not change firewall rules, write registry keys, quarantine files, force unlock files, disable startup entries, kill process trees, kill by name, or delete files on reboot.
 
 ## Privacy Promise

@@ -15,6 +15,8 @@ JSentinel should be designed around conservative local control.
 - Kill process must never kill by name, kill process trees, retry in loops, or attempt admin escalation.
 - Kill process denies JSentinel itself, its parent process when detectable, protected process names, missing verified process details, and Windows-directory targets.
 - Kill process audit metadata must not store full command lines.
+- Startup Guard disable/restore actions are planning-only in Package 4D and must not write the registry, edit Startup folders, modify scheduled tasks, or modify services.
+- Future startup disable must have a local backup record and explicit confirmation before any real implementation is considered.
 - Reversible actions are preferred.
 - No force-delete in v1.
 - No kernel driver in v1.

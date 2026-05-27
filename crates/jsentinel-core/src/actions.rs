@@ -688,6 +688,22 @@ mod tests {
     }
 
     #[test]
+    fn startup_actions_are_planned_but_not_executed() {
+        let executor = SafeActionExecutor::new(MockAdapter::default());
+        for kind in [ActionKind::DisableStartup, ActionKind::RestoreStartup] {
+            let result = executor.execute(ActionRequest::new(
+                kind,
+                "startup-entry-1",
+                "Demo startup entry",
+                "startup",
+            ));
+
+            assert_eq!(result.status, ActionStatus::Denied);
+            assert!(result.error.is_some());
+        }
+    }
+
+    #[test]
     fn kill_process_missing_pid_metadata_is_denied() {
         let executor = SafeActionExecutor::new(MockAdapter::default());
         let result = executor.execute(ActionRequest::new(

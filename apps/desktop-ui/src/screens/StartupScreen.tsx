@@ -13,9 +13,11 @@ import {
 } from "../components/ui";
 import { ActionButton } from "../components/actions";
 import {
+  loadStartupBackups,
   loadStartupEntries,
   modeLabel,
   type ReadOnlyQueryResult,
+  type StartupBackupRecord,
   type StartupEntryInfo,
   type SystemDataMode,
 } from "../system";
@@ -29,6 +31,7 @@ export function StartupScreen({ t, refreshToken }: { t: Dictionary; refreshToken
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [manualRefresh, setManualRefresh] = useState(0);
+  const [backups, setBackups] = useState<StartupBackupRecord[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -36,10 +39,12 @@ export function StartupScreen({ t, refreshToken }: { t: Dictionary; refreshToken
     Promise.all([
       loadEvents({ kind: "startup", severity: null, text: null, limit: 100 }),
       loadStartupEntries(),
-    ]).then(([eventResult, entryResult]) => {
+      loadStartupBackups({ limit: 100 }),
+    ]).then(([eventResult, entryResult, backupResult]) => {
       if (!cancelled) {
         setEvents(eventResult.data);
         setEntries(entryResult.data);
+        setBackups(backupResult);
         setMode(entryResult.mode);
         setWarning(entryResult.warning ?? null);
         setLastUpdated(new Date().toLocaleTimeString());
@@ -57,6 +62,22 @@ export function StartupScreen({ t, refreshToken }: { t: Dictionary; refreshToken
     entries?.items.filter((entry) => sourceFilter === "all" || entry.source === sourceFilter) ?? [];
   const useLive = (mode === "live_windows" || mode === "partial_support") && Boolean(liveItems.length);
   const displayCount = useLive ? liveItems.length : rows.length;
+  const backupByEntry = new Map(backups.map((backup) => [backup.entry_id, backup]));
+
+  function startupMetadata(entry: StartupEntryInfo, backup: StartupBackupRecord | undefined) {
+    return {
+      entry_id: entry.id,
+      name: entry.name,
+      source: entry.source,
+      scope: entry.scope,
+      command: entry.command,
+      path: entry.path,
+      enabled: entry.enabled,
+      original_location: entry.source,
+      backup_available: Boolean(backup),
+      backup_id: backup?.backup_id,
+    };
+  }
 
   return (
     <section className="screen">
@@ -99,21 +120,52 @@ export function StartupScreen({ t, refreshToken }: { t: Dictionary; refreshToken
             <span>{t.startup.source}</span>
             <span>{t.startup.state}</span>
             <span>{useLive ? t.startup.scope : t.startup.timestamp}</span>
-            <span>{useLive ? t.startup.risk : t.startup.severity}</span>
+            <span>{useLive ? t.startup.backup : t.startup.severity}</span>
+            <span>{t.startup.actions}</span>
           </div>
           {useLive &&
-            liveItems.map((entry) => (
-              <div className="data-row" key={entry.id}>
-                <span>{entry.name}</span>
-                <span>{entry.source}</span>
-                <StatusBadge
-                  label={entry.enabled === false ? t.startup.disabled : t.startup.enabled}
-                  tone={entry.enabled === false ? "neutral" : "success"}
-                />
-                <span>{entry.scope}</span>
-                <StatusBadge label={entry.risk ?? t.startup.unknownRisk} />
-              </div>
-            ))}
+            liveItems.map((entry) => {
+              const backup = backupByEntry.get(entry.id);
+              return (
+                <div className="data-row" key={entry.id}>
+                  <span>{entry.name}</span>
+                  <span>{entry.source}</span>
+                  <StatusBadge
+                    label={entry.enabled === false ? t.startup.disabled : t.startup.enabled}
+                    tone={entry.enabled === false ? "neutral" : "success"}
+                  />
+                  <span>{entry.scope}</span>
+                  <StatusBadge
+                    label={backup ? t.startup.backupAvailable : t.startup.noBackup}
+                    tone={backup ? "success" : "neutral"}
+                  />
+                  <div className="inline-actions">
+                    <ActionButton
+                      kind="disable_startup"
+                      sourceScreen="startup"
+                      target={entry.id}
+                      targetDisplayName={entry.name}
+                      metadataJson={startupMetadata(entry, backup)}
+                      t={t}
+                    >
+                      {t.disabledActions.disableStartup}
+                    </ActionButton>
+                    <ActionButton
+                      kind="restore_startup"
+                      sourceScreen="startup"
+                      target={entry.id}
+                      targetDisplayName={entry.name}
+                      metadataJson={startupMetadata(entry, backup)}
+                      disabled={!backup}
+                      disabledReason={t.startup.backupRequired}
+                      t={t}
+                    >
+                      {t.disabledActions.restoreStartup}
+                    </ActionButton>
+                  </div>
+                </div>
+              );
+            })}
           {(mode === "live_windows" || mode === "partial_support") && !useLive && (
             <EmptyState title={t.startup.noStartupEvents} description={t.system.emptySnapshot} />
           )}
@@ -127,9 +179,27 @@ export function StartupScreen({ t, refreshToken }: { t: Dictionary; refreshToken
               <StatusBadge label={row.enabled} tone="neutral" />
               <span>{row.timestamp}</span>
               <SeverityBadge severity={row.severity} t={t} />
+              <span>{t.startup.mockActionsUnavailable}</span>
             </div>
           ))}
         </div>
+      </SectionCard>
+      <SectionCard title={t.startup.readinessTitle} description={t.startup.readinessDescription}>
+        <div className="metric-grid">
+          <div className="metric-card">
+            <span>{t.startup.readOnlyEntries}</span>
+            <strong>{entries?.items.length ?? 0}</strong>
+          </div>
+          <div className="metric-card">
+            <span>{t.startup.backupRecords}</span>
+            <strong>{backups.length}</strong>
+          </div>
+          <div className="metric-card">
+            <span>{t.startup.registryWrites}</span>
+            <strong>{t.system.unsupported}</strong>
+          </div>
+        </div>
+        <p className="muted-line">{t.startup.noRegistryWrites}</p>
       </SectionCard>
       <SectionCard title={t.startup.actionsTitle} description={t.startup.actionsDescription}>
         <div className="action-grid">

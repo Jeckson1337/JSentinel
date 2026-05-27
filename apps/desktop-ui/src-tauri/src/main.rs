@@ -6,7 +6,10 @@ use jsentinel_core::{
 };
 use jsentinel_db::{DashboardSummary, EventQuery};
 use jsentinel_events::{AccessEvent, EventId};
-use jsentinel_policy::{ActionHistoryQuery, ActionPlan, ActionRequest, ActionResult, PolicyEngine};
+use jsentinel_policy::{
+    ActionHistoryQuery, ActionKind, ActionPlan, ActionRequest, ActionResult, PolicyEngine,
+    StartupActionPlan, StartupBackupQuery, StartupBackupRecord, StartupEntryTarget,
+};
 use serde::Serialize;
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -173,6 +176,58 @@ fn jsentinel_get_action_history(
         .map_err(|error| error.to_string())
 }
 
+#[tauri::command]
+fn jsentinel_plan_startup_action(
+    state: tauri::State<'_, AppState>,
+    target: StartupEntryTarget,
+    action_kind: ActionKind,
+) -> Result<StartupActionPlan, String> {
+    let backup_available = {
+        let service = state
+            .event_service
+            .lock()
+            .map_err(|_| "event service lock was poisoned".to_string())?;
+        service
+            .find_startup_backup_by_entry(&target.entry_id)
+            .map_err(|error| error.to_string())?
+            .is_some()
+    };
+
+    Ok(PolicyEngine::plan_startup_action(
+        target,
+        action_kind,
+        backup_available,
+    ))
+}
+
+#[tauri::command]
+fn jsentinel_list_startup_backups(
+    state: tauri::State<'_, AppState>,
+    query: StartupBackupQuery,
+) -> Result<Vec<StartupBackupRecord>, String> {
+    let service = state
+        .event_service
+        .lock()
+        .map_err(|_| "event service lock was poisoned".to_string())?;
+    service
+        .list_startup_backups(query)
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn jsentinel_get_startup_backup(
+    state: tauri::State<'_, AppState>,
+    backup_id: String,
+) -> Result<Option<StartupBackupRecord>, String> {
+    let service = state
+        .event_service
+        .lock()
+        .map_err(|_| "event service lock was poisoned".to_string())?;
+    service
+        .get_startup_backup(&backup_id)
+        .map_err(|error| error.to_string())
+}
+
 fn main() {
     let database_path = dev_database_path();
     let event_service = EventService::initialize_storage(database_path)
@@ -198,7 +253,10 @@ fn main() {
             jsentinel_plan_action,
             jsentinel_execute_safe_action,
             jsentinel_list_action_history,
-            jsentinel_get_action_history
+            jsentinel_get_action_history,
+            jsentinel_plan_startup_action,
+            jsentinel_list_startup_backups,
+            jsentinel_get_startup_backup
         ])
         .run(tauri::generate_context!())
         .expect("failed to run JSentinel desktop UI");

@@ -4,7 +4,10 @@ use jsentinel_events::{
     mock_demo_events, AccessEvent, EventId, EventKind, EventSeverity, EventSource, EventTimestamp,
     ProcessRef,
 };
-use jsentinel_policy::{ActionHistoryQuery, ActionKind, ActionResult, ActionStatus, PolicyEngine};
+use jsentinel_policy::{
+    ActionHistoryQuery, ActionKind, ActionResult, ActionStatus, PolicyEngine,
+    StartupBackupQuery, StartupBackupRecord,
+};
 use rusqlite::types::Type;
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
@@ -43,6 +46,7 @@ pub enum DbError {
     Io(std::io::Error),
     EventParse(String),
     ActionParse(String),
+    StartupBackupParse(String),
 }
 
 impl fmt::Display for DbError {
@@ -53,6 +57,9 @@ impl fmt::Display for DbError {
             Self::Io(error) => write!(formatter, "io error: {error}"),
             Self::EventParse(error) => write!(formatter, "event parse error: {error}"),
             Self::ActionParse(error) => write!(formatter, "action parse error: {error}"),
+            Self::StartupBackupParse(error) => {
+                write!(formatter, "startup backup parse error: {error}")
+            }
         }
     }
 }
@@ -176,6 +183,19 @@ impl Database {
                 message TEXT NULL,
                 started_at TEXT NULL,
                 finished_at TEXT NULL,
+                metadata_json TEXT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS startup_backups (
+                backup_id TEXT PRIMARY KEY,
+                entry_id TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                source TEXT NOT NULL,
+                original_name TEXT NOT NULL,
+                original_command TEXT NOT NULL,
+                original_path TEXT NULL,
+                original_enabled_state TEXT NOT NULL,
+                restore_strategy TEXT NOT NULL,
                 metadata_json TEXT NULL
             );
 
@@ -487,6 +507,143 @@ impl Database {
             .map_err(DbError::from)
     }
 
+    pub fn insert_startup_backup(&self, record: &StartupBackupRecord) -> DbResult<()> {
+        let metadata_json = record
+            .metadata_json
+            .as_ref()
+            .map(serde_json::to_string)
+            .transpose()?;
+
+        self.conn.execute(
+            r#"
+            INSERT OR REPLACE INTO startup_backups (
+                backup_id,
+                entry_id,
+                created_at,
+                source,
+                original_name,
+                original_command,
+                original_path,
+                original_enabled_state,
+                restore_strategy,
+                metadata_json
+            )
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
+            "#,
+            params![
+                record.backup_id.as_str(),
+                record.entry_id.as_str(),
+                record.created_at.as_str(),
+                record.source.as_str(),
+                record.original_name.as_str(),
+                record.original_command.as_str(),
+                record.original_path.as_deref(),
+                record.original_enabled_state.as_str(),
+                record.restore_strategy.as_str(),
+                metadata_json,
+            ],
+        )?;
+
+        Ok(())
+    }
+
+    pub fn list_startup_backups(
+        &self,
+        query: StartupBackupQuery,
+    ) -> DbResult<Vec<StartupBackupRecord>> {
+        let entry_id = query
+            .entry_id
+            .as_ref()
+            .filter(|value| !value.trim().is_empty())
+            .map(|value| value.trim().to_string());
+        let source = query
+            .source
+            .as_ref()
+            .filter(|value| !value.trim().is_empty())
+            .map(|value| value.trim().to_string());
+        let limit = query.limit.unwrap_or(50).clamp(1, 500) as i64;
+
+        let mut statement = self.conn.prepare(
+            r#"
+            SELECT
+                backup_id,
+                entry_id,
+                created_at,
+                source,
+                original_name,
+                original_command,
+                original_path,
+                original_enabled_state,
+                restore_strategy,
+                metadata_json
+            FROM startup_backups
+            WHERE (?1 IS NULL OR entry_id = ?1)
+              AND (?2 IS NULL OR source = ?2)
+            ORDER BY created_at DESC
+            LIMIT ?3
+            "#,
+        )?;
+
+        let rows =
+            statement.query_map(params![entry_id, source, limit], row_to_startup_backup)?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
+    }
+
+    pub fn get_startup_backup(&self, backup_id: &str) -> DbResult<Option<StartupBackupRecord>> {
+        self.conn
+            .query_row(
+                r#"
+                SELECT
+                    backup_id,
+                    entry_id,
+                    created_at,
+                    source,
+                    original_name,
+                    original_command,
+                    original_path,
+                    original_enabled_state,
+                    restore_strategy,
+                    metadata_json
+                FROM startup_backups
+                WHERE backup_id = ?1
+                "#,
+                params![backup_id],
+                row_to_startup_backup,
+            )
+            .optional()
+            .map_err(DbError::from)
+    }
+
+    pub fn find_startup_backup_by_entry(
+        &self,
+        entry_id: &str,
+    ) -> DbResult<Option<StartupBackupRecord>> {
+        self.conn
+            .query_row(
+                r#"
+                SELECT
+                    backup_id,
+                    entry_id,
+                    created_at,
+                    source,
+                    original_name,
+                    original_command,
+                    original_path,
+                    original_enabled_state,
+                    restore_strategy,
+                    metadata_json
+                FROM startup_backups
+                WHERE entry_id = ?1
+                ORDER BY created_at DESC
+                LIMIT 1
+                "#,
+                params![entry_id],
+                row_to_startup_backup,
+            )
+            .optional()
+            .map_err(DbError::from)
+    }
+
     fn count_where(&self, condition: &str) -> DbResult<u64> {
         let sql = format!("SELECT COUNT(*) FROM events WHERE {condition}");
         let count: i64 = self.conn.query_row(&sql, [], |row| row.get(0))?;
@@ -573,6 +730,24 @@ fn row_to_action_result(row: &rusqlite::Row<'_>) -> rusqlite::Result<ActionResul
         status,
         message: message.unwrap_or_default(),
         error,
+        metadata_json,
+    })
+}
+
+fn row_to_startup_backup(row: &rusqlite::Row<'_>) -> rusqlite::Result<StartupBackupRecord> {
+    let metadata_json: Option<String> = row.get(9)?;
+    let metadata_json = metadata_json.and_then(|value| serde_json::from_str::<Value>(&value).ok());
+
+    Ok(StartupBackupRecord {
+        backup_id: row.get(0)?,
+        entry_id: row.get(1)?,
+        created_at: row.get(2)?,
+        source: row.get(3)?,
+        original_name: row.get(4)?,
+        original_command: row.get(5)?,
+        original_path: row.get(6)?,
+        original_enabled_state: row.get(7)?,
+        restore_strategy: row.get(8)?,
         metadata_json,
     })
 }
@@ -790,5 +965,76 @@ mod tests {
         assert!(history
             .iter()
             .any(|item| item.status == ActionStatus::Unsupported));
+    }
+
+    #[test]
+    fn startup_backup_insert_list_get_and_find() {
+        let database =
+            init_db(temp_db_path("startup-backups")).expect("database should initialize");
+        let record = StartupBackupRecord {
+            backup_id: "backup-1".to_string(),
+            entry_id: "entry-1".to_string(),
+            created_at: "unix:1".to_string(),
+            source: "HKCU Run".to_string(),
+            original_name: "Demo".to_string(),
+            original_command: "demo.exe".to_string(),
+            original_path: Some("C:\\Demo\\demo.exe".to_string()),
+            original_enabled_state: "enabled".to_string(),
+            restore_strategy: "restore_run_value".to_string(),
+            metadata_json: Some(serde_json::json!({ "planned_only": true })),
+        };
+
+        database
+            .insert_startup_backup(&record)
+            .expect("startup backup insert should work");
+
+        let backups = database
+            .list_startup_backups(StartupBackupQuery::default())
+            .expect("startup backups should list");
+        let fetched = database
+            .get_startup_backup("backup-1")
+            .expect("startup backup get should work")
+            .expect("startup backup should exist");
+        let by_entry = database
+            .find_startup_backup_by_entry("entry-1")
+            .expect("startup backup find should work")
+            .expect("startup backup should exist by entry");
+
+        assert_eq!(backups.len(), 1);
+        assert_eq!(fetched, record);
+        assert_eq!(by_entry.backup_id, "backup-1");
+    }
+
+    #[test]
+    fn startup_backup_filters_by_entry() {
+        let database =
+            init_db(temp_db_path("startup-backup-filter")).expect("database should initialize");
+        for entry_id in ["entry-1", "entry-2"] {
+            database
+                .insert_startup_backup(&StartupBackupRecord {
+                    backup_id: format!("backup-{entry_id}"),
+                    entry_id: entry_id.to_string(),
+                    created_at: "unix:1".to_string(),
+                    source: "HKCU Run".to_string(),
+                    original_name: "Demo".to_string(),
+                    original_command: "demo.exe".to_string(),
+                    original_path: None,
+                    original_enabled_state: "enabled".to_string(),
+                    restore_strategy: "restore_run_value".to_string(),
+                    metadata_json: None,
+                })
+                .expect("startup backup insert should work");
+        }
+
+        let backups = database
+            .list_startup_backups(StartupBackupQuery {
+                entry_id: Some("entry-2".to_string()),
+                source: None,
+                limit: Some(10),
+            })
+            .expect("startup backup filter should work");
+
+        assert_eq!(backups.len(), 1);
+        assert_eq!(backups[0].entry_id, "entry-2");
     }
 }

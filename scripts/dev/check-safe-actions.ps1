@@ -44,7 +44,16 @@ foreach ($pattern in @(
     'netsh',
     'New-NetFirewallRule',
     'Set-NetFirewallRule',
-    'Remove-NetFirewallRule'
+    'Remove-NetFirewallRule',
+    'Set-ItemProperty',
+    'New-ItemProperty',
+    'Remove-ItemProperty',
+    'Disable-ScheduledTask',
+    'Enable-ScheduledTask',
+    'Unregister-ScheduledTask',
+    'Set-Service',
+    'Stop-Service',
+    'Start-Service'
 )) {
     if (($content -match $pattern) -or ($windowsContent -match $pattern)) {
         $errors += "Forbidden dangerous-action pattern found in source: $pattern"
